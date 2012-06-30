@@ -1,0 +1,122 @@
+#!/usr/bin/python
+
+# make_src
+# This is part of the Mer git-packaging suite
+# It takes a _src file and recreates any tarballs referenced in it.
+#
+# 3 types:
+# native: extract the tarball using git archive <tag>
+# upstream git: additionally use git format-patch to make patches
+# pristine tar: use ptar and then git format-patch
+# upstream with released tarball: as pristine tar but skip the commit
+#   labelled "pristine-tar" in the mer-<version> branch
+
+import re
+import subprocess
+
+class UnknownFormat(Exception):
+    pass
+
+def checkout_packaging_branch(pkg):
+    subprocess.call(["/usr/bin/git", "checkout", pkg])
+
+def guess_format(archive):
+    if (re.search(r'\.t(ar\.)?gz$', archive)):
+        return ("tar", "gzip")
+    elif (re.search(r'\.tar\.bz2$', archive)):
+        return ("tar", "bzip2")
+    else:
+        raise UnknownFormat()
+
+def count_commits(a, b):
+    return int(
+        subprocess.check_output("/usr/bin/git rev-list %s..%s | wc -l" %
+                                (a,b), shell=True))
+
+
+def prepare_tarball_and_patches():
+    src_f = open("_src")
+
+    for src in src_f:
+        src = src.rstrip()
+        src = src.split(":")
+        vcs = src[0]
+        tag1, tag2 = None, None
+
+        if (vcs == "git" ):
+            # git:<tarball>:<tag1>:<tag2>
+            # make a tarball at tag1 and patches to tag2 (if present)
+            if len(src) < 3:
+                raise Exception("Not enough arguments for 'git' line in _src")
+            
+            tarball, tag1 = src[1:3]
+            if len(src) > 3:
+                tag2 = src[3]
+
+            # Determine archive/compression
+            try:
+                format, compression = guess_format(tarball)
+                # Make a suitable tarball
+                subprocess.call(
+                    "/usr/bin/git archive --format=%(format)s --prefix=src/ %(tag1)s "
+                    "| %(compression)s > %(tarball)s" % locals(),
+                    shell=True)
+            except UnknownFormat :
+                print "Can't determine format of tarball %s" % tarball
+                system.exit(1)
+
+        elif (vcs == "pristine-tar"):
+            # pristine-tar:<tarball>:<tag1>:<tag2>
+            # extract upstream tarball and make patches from tag1 to tag2
+            # (if present) skipping the special 'pristine-tar' diff patch
+            if len(src) < 3:
+                raise Exception("Not enough arguments for 'pristine-tar' line in _src")
+            
+            tarball, tag1 = src[1:3]
+            if len(src) > 3:
+                tag2 = src[3]
+
+            # For pristine tar style repos the first commit is the
+            # pristine tar delta stored in a commit labeled pristine-tar-delta
+            # Skip the first commit using commit~N terminology
+            tag1 = "%s~%d" %(tag2, count_commits(tag1, tag2) - 1)
+
+            subprocess.call(
+                [ "/usr/bin/pristine-tar", "checkout", tarball],
+                shell=False)
+    #        raise Exception("Pristine tar not done yet")
+
+        else:
+            raise Exception("_src storage %s not recognised" % vcs)
+
+        # If a tag range was specified, create patches
+        if tag2:
+            patches = subprocess.check_output(
+                [ "/usr/bin/git", "format-patch", "--find-renames",
+                  "--binary", "-N", "--no-numbered",
+                  "%(tag1)s..%(tag2)s" % locals() ],
+                shell=False).splitlines()
+
+            print "Patch source entries and %patch entries for .spec file\n"
+            count = 1
+            for patch in patches:
+                print "Patch%(count)d: %(patch)s" % locals()
+                count+=1
+
+            print
+            count = 1
+            for patch in patches:
+                print "%%patch%(count)d -p1" % locals()
+                count+=1
+
+            print "\nPatches entries for Spectacle .yaml file\n"
+            print "Patches:"
+            for patch in patches:
+                print "- %(patch)s" % locals()
+
+                            
+
+checkout_packaging_branch("mer-pkg")
+prepare_tarball_and_patches()
+
+
