@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# gp_setup
+# This is part of the Mer git-packaging suite
+# It sets up a git repo to use git-pkg
+
+# If not
+# Check if a mer-pkg exists already
+# Create mer-pkg
+# Add templates
+
+pkg_branch=mer-pkg
+
+[[ -d .git ]] || {
+    echo "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
+    exit 1
+}
+
+if git show-ref --verify --quiet refs/heads/${pkg_branch}; then
+    echo "${pkg_branch} branch exists already"
+    exit 1
+fi
+
+# get the symbolic name
+current_branch=$(git symbolic-ref -q HEAD)
+current_branch=${current_branch##refs/heads/}
+# If not set, use the sha1
+current_branch=${current_branch:-$(git log -1 --format="%H")}
+
+# FIXME - should check if a stash is needed
+DO_STASH=1
+
+[[ $DO_STASH ]] && git stash save
+git checkout --orphan ${pkg_branch}
+git rm -rf .
+touch _src
+git add _src
+git commit -m"Packaging commit with empty _src"
+git checkout $current_branch
+
+[[ $DO_STASH ]] && git stash pop
+
+echo "${pkg_branch} created with an empty _src file."
