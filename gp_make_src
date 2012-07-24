@@ -43,6 +43,9 @@ def prepare_tarball_and_patches():
         vcs = src[0]
         tag1, tag2 = None, None
 
+        if vcs.startswith("#"):
+            continue
+
         if (vcs == "git" ):
             # git:<tarball>:<tag1>:<tag2>
             # make a tarball at tag1 and patches to tag2 (if present)
