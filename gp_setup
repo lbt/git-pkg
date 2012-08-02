@@ -9,7 +9,7 @@
 # Create mer-pkg
 # Add templates
 
-pkg_branch=mer-pkg
+pkg_branch=pkg-mer
 
 [[ -d .git ]] || {
     echo "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
