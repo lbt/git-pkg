@@ -14,6 +14,8 @@
 import re
 import subprocess
 
+pkg_branch="pkg-mer"
+
 class UnknownFormat(Exception):
     pass
 
@@ -119,7 +121,7 @@ def prepare_tarball_and_patches():
 
                             
 
-checkout_packaging_branch("mer-pkg")
+checkout_packaging_branch(pkg_branch)
 prepare_tarball_and_patches()
 
 
