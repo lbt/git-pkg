@@ -16,28 +16,203 @@ pkg_branch=pkg-mer
     exit 1
 }
 
-if git show-ref --verify --quiet refs/heads/${pkg_branch}; then
-    echo "${pkg_branch} branch exists already"
-    exit 1
-fi
+usage() {
+    cat <<EOF
+    gp_setup --start | --end | -- pkg 
+    gp_setup --existing <tag> <packaging dir> <patch-tag>
+    gp_setup --pristine
+ 
+       Used to setup an existing git repo for git-pkg
 
-# get the symbolic name
-current_branch=$(git symbolic-ref -q HEAD)
-current_branch=${current_branch##refs/heads/}
-# If not set, use the sha1
-current_branch=${current_branch:-$(git log -1 --format="%H")}
+    --existing
+       Take an existing set of packaging and apply to an upstream git
+       <tag> should be the tag/sha1 of the original git to use for the tarball
+       <packaging dir> is the source of the spec/yaml/changes/patches
+       <patch-tag> is the id which will be used for the branch+tag for the patches
+       
+    --pristine
+       Take an existing set of packaging and make a pristine-tar tree
+       
+    --start
+       Creates a pkg-mer branch with a suitable .gitignore and a _src file
 
-# FIXME - should check if a stash is needed
-DO_STASH=1
+    --end
+       Adds and all files and runs a commit; then returns to the original branch.
 
-[[ $DO_STASH ]] && git stash save
-git checkout --orphan ${pkg_branch}
-git rm -rf .
-touch _src
-git add _src
-git commit -m"Packaging commit with empty _src"
-git checkout $current_branch
+EOF
+}
 
-[[ $DO_STASH ]] && git stash pop
 
-echo "${pkg_branch} created with an empty _src file."
+use_existing() {
+    mkdir -p .gp
+    tag=$1
+    patchdir=$2
+    pbranch=$3
+    echo tag=$tag >> .gp/env
+    echo patchdir=$patchdir >> .gp/env
+    echo pbranch=$pbranch >> .gp/env
+
+    numspec=$(ls $patchdir/*spec 2>/dev/null | wc -l)
+    numyaml=$(ls $patchdir/*yaml 2>/dev/null | wc -l)
+    if [[ $numspec -gt 1 ]] || [[ $numyaml -gt 1 ]]; then
+	echo "gp_setup doesn't support packaging with >1 .spec or .yaml file"
+	exit 1
+    fi
+
+    specfile=$(cd $patchdir; ls *.spec 2>/dev/null)
+    yamlfile=$(cd $patchdir; ls *.yaml 2>/dev/null)
+
+    git checkout -f $tag
+    git checkout -b $pbranch
+    for patch in $(cd $patchdir; grep Patch.*: *spec | cut -f2 -d:); do
+	echo Applying $patch
+	patch --fuzz=2 -p1 --no-backup-if-mismatch -s < $patchdir/$patch
+	git commit -am"$patch"
+    done
+
+    git format-patch --find-renames --binary -N --no-numbered $tag..$pbranch > .gp/patches
+
+    echo "Making PatchXX source entries and %patchXX entries for .spec file in .gp/spec-Patch and .gp/spec-patch"
+    count=1
+    > .gp/spec-Patch
+    while read patch; do
+        echo "Patch$((count++)): $patch" >> .gp/spec-Patch
+    done< .gp/patches
+
+    count=1
+    > .gp/spec-patch
+    while read patch; do
+        echo "%patch$((count++)) -p1"  >> .gp/spec-patch
+    done< .gp/patches
+
+    echo "Making Patches; entries for Spectacle .yaml file for .spec file in .gp/spec-yaml"
+    echo "Patches:" > .gp/spec-yaml
+    while read patch; do
+        echo " - $patch" >> .gp/spec-yaml
+    done < .gp/patches
+
+    # Guess the tarball
+    tgz=$(cd $patchdir; find * -name *t*gz)
+    tbz=$(cd $patchdir; find * -name *t*bz2)
+    if [[ $tgz ]]; then
+	echo git:$tgz:$tag:$pbranch > .gp/_src
+    elif [[ $tbz ]]; then
+	echo git:$tbz:$tag:$pbranch > .gp/_src
+    fi
+
+    prepare
+
+    cp $patchdir/* .
+
+    if [[ -e $yamlfile ]]; then
+	cat .gp/spec-yaml >> $yamlfile
+	echo Please edit/move the Patches section at the end of $yamlfile and then exit this subshell
+	bash
+    else
+	cat .gp/spec-Patch >> $specfile	
+	cat .gp/spec-patch >> $specfile	
+	echo Please edit/move the Patches section at the end of $specfile and then exit this subshell
+	bash
+    fi
+
+    git add * >/dev/null 2>&1
+    git rm -q --cached $tgz $tbz >/dev/null 2>&1
+    git rm -q --cached *patch >/dev/null 2>&1
+
+    git commit -m"Initial git package of $tag as $pbranch"
+
+    echo Guessed 
+    cat _src
+    echo for _src
+
+    echo "gp_setup --existing isn't thoroughly tested - please fix and/or report any bugs you find"
+}
+
+prepare() {
+    if git show-ref --verify --quiet refs/heads/${pkg_branch}; then
+	echo "${pkg_branch} branch exists already"
+	exit 1
+    fi
+
+    # get the symbolic name
+    current_branch=$(git symbolic-ref -q HEAD)
+    current_branch=${current_branch##refs/heads/}
+    # If not set, use the sha1
+    current_branch=${current_branch:-$(git log -1 --format="%H")}
+    
+    # Store state
+    mkdir -p .gp
+    echo current_branch=${current_branch} >> .gp/env
+
+    # FIXME - should check if a stash is needed
+    DO_STASH=1
+
+    [[ $DO_STASH ]] && git stash save
+    git checkout --orphan ${pkg_branch}
+    git rm -q -rf . 
+    echo .osc > .gitignore
+    if [[ -e .gp/_src ]]; then
+	cp .gp/_src _src
+    else
+	touch _src
+    fi
+    git add _src .gitignore
+}
+
+pkg() {
+    # Guess the version
+    tag1=$(head -1 *.changes | cut -f2 -d\> | cut -f2 -d-)
+    tag1=${ver## }
+
+    # Guess the tarball
+    tgz=$(find * -name *t*gz)
+    tbz=$(find * -name *t*bz2)
+    if [[ $tgz ]]; then
+	echo git:$tgz:$ver > _src
+    elif [[ $tbz ]]; then
+	echo git:$tbz:$ver > _src
+    fi
+
+    git add *changes *spec *yaml >/dev/null 2>&1
+    git rm --cached $tgz $tbz >/dev/null 2>&1
+
+    echo Guessed 
+    cat _src
+    echo for _src
+    echo Please check tags and see if any local patches need importing to git.
+    echo When done run
+    echo gp_setup --end
+    
+}
+
+
+
+finalise() {
+    git commit -m"Packaging commit with empty _src"
+    git checkout $current_branch
+
+    [[ $DO_STASH ]] && git stash pop
+
+    echo "${pkg_branch} created with an empty _src file."
+}
+
+[ -e .gb/env ] && . .gb/env
+
+case $1 in
+    --existing )
+	use_existing $2 $3 $4 ;;
+
+    --start )
+	prepare ;;
+
+    --pkg )
+	pkg ;;
+
+    --end )
+	finalise ;;
+
+    * )
+	usage ;;
+esac
+
+
