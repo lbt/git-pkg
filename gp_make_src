@@ -118,7 +118,8 @@ def prepare_tarball_and_patches():
             print "Patches:"
             for patch in patches:
                 print "- %(patch)s" % locals()
-
+        else:
+            print "No patches requested"
                             
 
 checkout_packaging_branch(pkg_branch)
