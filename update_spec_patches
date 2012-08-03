@@ -1,0 +1,43 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+# Skip to the SourceXX: line
+while (<>) {
+  print unless /^Patch/;
+  next unless /^Source/;
+  last;
+}
+# Now print all Source lines but not Patch lines
+while (<>) {
+  next if /^Patch/;
+  if (/^Source/) { print; next; }
+  last; # Leaving with $_ needing printing
+}
+my $unprinted = $_;
+
+# Insert our set of Patches:
+open(PatchFile, ".gp/spec-Patch") or die "No .gp/spec-Patch file for PatchXX: entries";
+print <PatchFile>;
+
+print $unprinted;
+# Skip to %prep
+while (<>) {
+  print unless /^Patch/ ;
+  last if /^%prep/;
+}
+my $maybe_setup = <>;
+if ($maybe_setup !~ /^%setup/) {
+  print STDERR "No %setup following %prep - %patch macros are almost certainly wrong\n";
+} else {
+  print STDERR "Adjusting %setup since git-pkg unpacks to src/\n";
+  print "# Adjusting %setup since git-pkg unpacks to src/\n";
+  $maybe_setup =~ s/-n [^ ]*$/-n src/;
+}
+print "$maybe_setup\n";
+open(patchFile, ".gp/spec-patch") or die "No .gp/spec-patch file for %patch macros";
+print <patchFile>;
+while (<>) {
+  print unless /^%patch/ ;
+}
+

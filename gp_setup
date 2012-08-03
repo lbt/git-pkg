@@ -109,10 +109,10 @@ use_existing() {
 	echo Please edit/move the Patches section at the end of $yamlfile and then exit this subshell
 	bash
     else
-	cat .gp/spec-Patch >> $specfile	
-	cat .gp/spec-patch >> $specfile	
-	echo Please edit/move the Patches section at the end of $specfile and then exit this subshell
-	bash
+	/mer/mer/gitpkg/update_spec_patches < $specfile > .gp/$specfile
+	mv .gp/$specfile $specfile
+	echo $specfile is
+	cat $specfile
     fi
 
     git add * >/dev/null 2>&1
