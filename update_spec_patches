@@ -2,6 +2,9 @@
 
 use strict;
 
+my $setup_src = (defined $ARGV[1] and $ARGV[1] eq "--setup_src") ? 1 : 0;
+
+
 # Skip to the SourceXX: line
 while (<>) {
   print unless /^Patch/;
@@ -29,7 +32,7 @@ while (<>) {
 my $maybe_setup = <>;
 if ($maybe_setup !~ /^%setup/) {
   print STDERR "No %setup following %prep - %patch macros are almost certainly wrong\n";
-} else {
+} elsif ( $setup_src == 1 ) {
   print STDERR "Adjusting %setup since git-pkg unpacks to src/\n";
   print "# Adjusting %setup since git-pkg unpacks to src/\n";
   $maybe_setup =~ s/-n [^ ]*$/-n src/;
