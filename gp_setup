@@ -19,7 +19,7 @@ pkg_branch=pkg-mer
 usage() {
     cat <<EOF
     gp_setup --start | --end | -- pkg 
-    gp_setup --existing <tag> <packaging dir> <patch-tag>
+    gp_setup --existing [--pristine] <tag> <packaging dir> <patch-tag>
     gp_setup --pristine
  
        Used to setup an existing git repo for git-pkg
@@ -41,9 +41,16 @@ usage() {
 
 EOF
 }
-
+count_commits() {
+    git rev-list $1..$2 | wc -l
+}
 
 use_existing() {
+    gp_type="git"
+    if [[ $1 == "--pristine" ]]; then
+	shift
+	gp_type="pristine-tar"
+    fi
     mkdir -p .gp
     tag=$1
     patchdir=$2
@@ -51,6 +58,8 @@ use_existing() {
     echo tag=$tag >> .gp/env
     echo patchdir=$patchdir >> .gp/env
     echo pbranch=$pbranch >> .gp/env
+
+    echo .gp/ > .git/info/exclude
 
     numspec=$(ls $patchdir/*spec 2>/dev/null | wc -l)
     numyaml=$(ls $patchdir/*yaml 2>/dev/null | wc -l)
@@ -62,15 +71,42 @@ use_existing() {
     specfile=$(cd $patchdir; ls *.spec 2>/dev/null)
     yamlfile=$(cd $patchdir; ls *.yaml 2>/dev/null)
 
+    # Guess the tarball
+    tarball=$(cd $patchdir; find * -name *t*gz)
+    [[ ! $tarball ]] && tarball=$(cd $patchdir; find * -name *t*bz2)
+
     git checkout -f $tag
     git checkout -b $pbranch
+    if [[ $gp_type == "pristine-tar" ]] ; then
+	echo "Pristine tar : removing all files and unpacking tarball to record any delta to $tag"
+	pristine-tar commit $patchdir/$tarball $tag
+	rm -rf *
+	tar xf $patchdir/$tarball
+	dir=$(ls)
+	echo "Found $dir"
+	mv $dir/* $dir/.* . 2>/dev/null
+	echo remove $dir
+	rmdir $dir
+	echo done remove
+	git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
+	git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
+    fi
     for patch in $(cd $patchdir; grep Patch.*: *spec | cut -f2 -d:); do
 	echo Applying $patch
 	patch --fuzz=2 -p1 --no-backup-if-mismatch -s < $patchdir/$patch
-	git commit -am"$patch"
+	git commit -am"$(basename $patch .patch)"
     done
 
-    git format-patch --find-renames --binary -N --no-numbered $tag..$pbranch > .gp/patches
+    
+    if [[ $gp_type == "pristine-tar" ]] ; then
+	echo Found this many commits:
+	count_commits $tag $pbranch
+	tag1="${pbranch}~$(($(count_commits $tag $pbranch ) - 1))"
+    else
+	tag1=$tag
+    fi
+
+    git format-patch --find-renames --binary -N --no-numbered $tag1..$pbranch > .gp/patches
 
     echo "Making PatchXX source entries and %patchXX entries for .spec file in .gp/spec-Patch and .gp/spec-patch"
     count=1
@@ -91,33 +127,28 @@ use_existing() {
         echo " - $patch" >> .gp/spec-yaml
     done < .gp/patches
 
-    # Guess the tarball
-    tgz=$(cd $patchdir; find * -name *t*gz)
-    tbz=$(cd $patchdir; find * -name *t*bz2)
-    if [[ $tgz ]]; then
-	echo git:$tgz:$tag:$pbranch > .gp/_src
-    elif [[ $tbz ]]; then
-	echo git:$tbz:$tag:$pbranch > .gp/_src
-    fi
-
+    echo $gp_type:$tarball:$tag:$pbranch > .gp/_src
+    
     prepare
 
     cp $patchdir/* .
+    rm $tarball
+    rm *patch
 
     if [[ -e $yamlfile ]]; then
 	cat .gp/spec-yaml >> $yamlfile
 	echo Please edit/move the Patches section at the end of $yamlfile and then exit this subshell
 	bash
     else
-	/mer/mer/gitpkg/update_spec_patches < $specfile > .gp/$specfile
+	if [[ $gp_type == "pristine-tar" ]] ; then
+	    /mer/mer/gitpkg/update_spec_patches < $specfile > .gp/$specfile
+	else
+	    /mer/mer/gitpkg/update_spec_patches --setup_src < $specfile > .gp/$specfile
+	fi
 	mv .gp/$specfile $specfile
-	echo $specfile is
-	cat $specfile
     fi
 
     git add * >/dev/null 2>&1
-    git rm -q --cached $tgz $tbz >/dev/null 2>&1
-    git rm -q --cached *patch >/dev/null 2>&1
 
     git commit -m"Initial git package of $tag as $pbranch"
 
@@ -165,13 +196,9 @@ pkg() {
     tag1=${ver## }
 
     # Guess the tarball
-    tgz=$(find * -name *t*gz)
-    tbz=$(find * -name *t*bz2)
-    if [[ $tgz ]]; then
-	echo git:$tgz:$ver > _src
-    elif [[ $tbz ]]; then
-	echo git:$tbz:$ver > _src
-    fi
+    tarball=$(cd $patchdir; find * -name *t*gz)
+    [[ ! $tarball ]] && tarball=$(cd $patchdir; find * -name *t*bz2)
+    echo git:$tarball:$ver > _src
 
     git add *changes *spec *yaml >/dev/null 2>&1
     git rm --cached $tgz $tbz >/dev/null 2>&1
@@ -200,7 +227,8 @@ finalise() {
 
 case $1 in
     --existing )
-	use_existing $2 $3 $4 ;;
+	shift
+	use_existing $* ;;
 
     --start )
 	prepare ;;
