@@ -20,7 +20,7 @@ class UnknownFormat(Exception):
     pass
 
 def checkout_packaging_branch(pkg):
-    subprocess.call(["/usr/bin/git", "checkout", pkg])
+    subprocess.call(["/usr/bin/git", "checkout", "-f", pkg])
 
 def guess_format(archive):
     if (re.search(r'\.t(ar\.)?gz$', archive)):
