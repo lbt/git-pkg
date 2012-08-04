@@ -19,9 +19,8 @@ while (<>) {
 }
 my $unprinted = $_;
 
-# Insert our set of Patches:
-open(PatchFile, ".gp/spec-Patch") or die "No .gp/spec-Patch file for PatchXX: entries";
-print <PatchFile>;
+# Insert our set of Patches if there are any:
+open(PatchFile, ".gp/spec-Patch") and print <PatchFile>;
 
 print $unprinted;
 # Skip to %prep
@@ -38,8 +37,7 @@ if ($maybe_setup !~ /^%setup/) {
   $maybe_setup =~ s/-n [^ ]*$/-n src/;
 }
 print "$maybe_setup\n";
-open(patchFile, ".gp/spec-patch") or die "No .gp/spec-patch file for %patch macros";
-print <patchFile>;
+open(patchFile, ".gp/spec-patch") and print <patchFile>;
 while (<>) {
   print unless /^%patch/ ;
 }
