@@ -11,6 +11,9 @@
 
 pkg_branch=pkg-mer
 
+# Hack until packaged
+alias update_spec_patches=/mer/mer/gitpkg/update_spec_patches
+
 [[ -d .git ]] || {
     echo "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
     exit 1
@@ -20,24 +23,27 @@ usage() {
     cat <<EOF
     gp_setup --start | --end | -- pkg 
     gp_setup --existing [--pristine] <tag> <packaging dir> <patch-tag>
-    gp_setup --pristine
  
        Used to setup an existing git repo for git-pkg
 
-    --existing
+    --existing [--pristine] <tag> <packaging dir> <patch-tag>
        Take an existing set of packaging and apply to an upstream git
        <tag> should be the tag/sha1 of the original git to use for the tarball
        <packaging dir> is the source of the spec/yaml/changes/patches
        <patch-tag> is the id which will be used for the branch+tag for the patches
-       
-    --pristine
-       Take an existing set of packaging and make a pristine-tar tree
+
+       If --pristine is used then it looks in <packaging dir> for a
+       tarball and uses that as the basis for the build.
        
     --start
-       Creates a pkg-mer branch with a suitable .gitignore and a _src file
+       Used in an existing git repo this creates a pkg-mer branch with
+       a suitable .gitignore and a _src file
 
     --end
        Adds and all files and runs a commit; then returns to the original branch.
+
+    --pkg
+       
 
 EOF
 }
@@ -45,22 +51,54 @@ count_commits() {
     git rev-list $1..$2 | wc -l
 }
 
+# http://stackoverflow.com/a/3879077/337649
+require_clean_work_tree () {
+    # Update the index
+    git update-index -q --ignore-submodules --refresh
+    err=0
+
+    # Disallow unstaged changes in the working tree
+    if ! git diff-files --quiet --ignore-submodules --
+    then
+        echo >&2 "cannot $1: you have unstaged changes."
+        git diff-files --name-status -r --ignore-submodules -- >&2
+        err=1
+    fi
+
+    # Disallow uncommitted changes in the index
+    if ! git diff-index --cached --quiet HEAD --ignore-submodules --
+    then
+        echo >&2 "cannot $1: your index contains uncommitted changes."
+        git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
+        err=1
+    fi
+
+    if [ $err = 1 ]
+    then
+        echo >&2 "Please commit or stash them before using gp_setup."
+        exit 1
+    fi
+}
+
 use_existing() {
+
+    # better option parsing welcomed
+
     gp_type="git"
     if [[ $1 == "--pristine" ]]; then
 	shift
 	gp_type="pristine-tar"
     fi
-    mkdir -p .gp
+
     tag=$1
     patchdir=$2
     pbranch=$3
-    echo tag=$tag >> .gp/env
-    echo patchdir=$patchdir >> .gp/env
-    echo pbranch=$pbranch >> .gp/env
 
-    echo .gp/ > .git/info/exclude
+    # Somewhere to keep the patch info
+    stash=$(mktemp -d)
+    trap 'rm -rf "$stash"' EXIT
 
+    # Verify there's only a single spec or yaml file.
     numspec=$(ls $patchdir/*spec 2>/dev/null | wc -l)
     numyaml=$(ls $patchdir/*yaml 2>/dev/null | wc -l)
     if [[ $numspec -gt 1 ]] || [[ $numyaml -gt 1 ]]; then
@@ -68,6 +106,7 @@ use_existing() {
 	exit 1
     fi
 
+    # ... and record it
     specfile=$(cd $patchdir; ls *.spec 2>/dev/null)
     yamlfile=$(cd $patchdir; ls *.yaml 2>/dev/null)
 
@@ -75,8 +114,15 @@ use_existing() {
     tarball=$(cd $patchdir; find * -name *t*gz)
     [[ ! $tarball ]] && tarball=$(cd $patchdir; find * -name *t*bz2)
 
+    # Branch from the appropriate tag
     git checkout -f $tag
     git checkout -b $pbranch
+
+    # Pristine tar approach needs some extra work
+    # 1. Commit the tarball in packaging to pristine tar
+    # 2. Replace the checked-out tree with the tarball
+    # 3. Commit any deltas (empty if needed)
+    # 4. Ready for patches
     if [[ $gp_type == "pristine-tar" ]] ; then
 	echo "Pristine tar : removing all files and unpacking tarball to record any delta to $tag"
 	pristine-tar commit $patchdir/$tarball $tag
@@ -91,139 +137,128 @@ use_existing() {
 	git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
 	git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
     fi
+
+    # Apply the patches mentioned in the spec file in the order they appear
+    # We'll probably need a --fuzz option at some point
+    # Keep the dir clean and we should abort/warn when patches don't apply
     for patch in $(cd $patchdir; grep Patch.*: *spec | cut -f2 -d:); do
 	echo Applying $patch
-	patch --fuzz=2 -p1 --no-backup-if-mismatch -s < $patchdir/$patch
+	if ! patch --fuzz=2 -p1 --no-backup-if-mismatch -s < $patchdir/$patch; then
+	    echo "Patch $patchdir/$patch seemed to apply badly - fixup in a different terminal and press return to commit it and continue"
+	    read dummy
+	fi
 	git commit -am"$(basename $patch .patch)"
+	have_patches=1
     done
 
-    
-    if [[ $gp_type == "pristine-tar" ]] ; then
-	echo Found this many commits:
-	count_commits $tag $pbranch
-	tag1="${pbranch}~$(($(count_commits $tag $pbranch ) - 1))"
+    if [[ $have_patches ]] ; then
+        # Pristine tar needs to skip the pristine-tar-delta patch
+	if [[ $gp_type == "pristine-tar" ]] ; then
+	    tag1="${pbranch}~$(($(count_commits $tag $pbranch ) - 1))"
+	else
+	    tag1=$tag
+	fi
+
+	# Create the patchset and record the output for parsing
+	git format-patch --find-renames --binary -N --no-numbered $tag1..$pbranch > $stash/patches
+	count=1
+	while read patch; do
+            echo "Patch$((count++)): $patch" >> $stash/spec-Patch
+	done < $stash/patches
+
+	count=1
+	while read patch; do
+            echo "%patch$((count++)) -p1"  >> $stash/spec-patch
+	done < $stash/patches
+
+	echo "Patches:" > $stash/spec-yaml
+	while read patch; do
+            echo " - $patch" >> $stash/spec-yaml
+	done < $stash/patches
+
+        # We now have all we need to create the _src file so stash that away
+	echo $gp_type:$tarball:$tag:$pbranch > $stash/_src
     else
-	tag1=$tag
+	# No patches variant of _src
+	echo $gp_type:$tarball:$tag > $stash/_src
     fi
 
-    git format-patch --find-renames --binary -N --no-numbered $tag1..$pbranch > .gp/patches
+    prepare_pkg_branch --quiet
 
-    echo "Making PatchXX source entries and %patchXX entries for .spec file in .gp/spec-Patch and .gp/spec-patch"
-    count=1
-    > .gp/spec-Patch
-    while read patch; do
-        echo "Patch$((count++)): $patch" >> .gp/spec-Patch
-    done< .gp/patches
-
-    count=1
-    > .gp/spec-patch
-    while read patch; do
-        echo "%patch$((count++)) -p1"  >> .gp/spec-patch
-    done< .gp/patches
-
-    echo "Making Patches; entries for Spectacle .yaml file for .spec file in .gp/spec-yaml"
-    echo "Patches:" > .gp/spec-yaml
-    while read patch; do
-        echo " - $patch" >> .gp/spec-yaml
-    done < .gp/patches
-
-    echo $gp_type:$tarball:$tag:$pbranch > .gp/_src
-    
-    prepare
-
+    # Copy all the packaging files in (assuming no hidden files)
     cp $patchdir/* .
+    # Clean up the tarball we found and any patches which are now autogenerated
     rm $tarball
     rm *patch
 
+    # Provide patch information for yaml/spec 
     if [[ -e $yamlfile ]]; then
-	cat .gp/spec-yaml >> $yamlfile
-	echo Please edit/move the Patches section at the end of $yamlfile and then exit this subshell
-	bash
+	# We need update_yaml_patches
+	cat $stash/spec-yaml >> $yamlfile
+	echo "Please edit/move the Patches section at the end of $yamlfile in another window and then press return"
+	ready dummy
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
-	    /mer/mer/gitpkg/update_spec_patches < $specfile > .gp/$specfile
+	    update_spec_patches < $specfile > $stash/$specfile
 	else
-	    /mer/mer/gitpkg/update_spec_patches --setup_src < $specfile > .gp/$specfile
+	    update_spec_patches --setup_src < $specfile > $stash/$specfile
 	fi
-	mv .gp/$specfile $specfile
+	mv $stash/$specfile $specfile
     fi
 
+    # Everything else is normal packaging
     git add * >/dev/null 2>&1
 
+    # And finally a commit
     git commit -m"Initial git package of $tag as $pbranch"
 
+    # Tidy up
+    rm -rf $stash
+
+    # Comment on what we've created
     echo Guessed 
     cat _src
     echo for _src
 
+    # and a reminder not to bitch *too* much
     echo "gp_setup --existing isn't thoroughly tested - please fix and/or report any bugs you find"
 }
 
-prepare() {
+prepare_pkg_branch() {
+    # Verify there's no packaging branch already
     if git show-ref --verify --quiet refs/heads/${pkg_branch}; then
 	echo "${pkg_branch} branch exists already"
 	exit 1
     fi
 
-    # get the symbolic name
-    current_branch=$(git symbolic-ref -q HEAD)
-    current_branch=${current_branch##refs/heads/}
-    # If not set, use the sha1
-    current_branch=${current_branch:-$(git log -1 --format="%H")}
-    
-    # Store state
-    mkdir -p .gp
-    echo current_branch=${current_branch} >> .gp/env
+    require_clean_work_tree
 
-    # FIXME - should check if a stash is needed
-    DO_STASH=1
-
-    [[ $DO_STASH ]] && git stash save
+    # This creates the orphaned pkg-* branch
     git checkout --orphan ${pkg_branch}
     git rm -q -rf . 
+
+    # We typically expect to be used in OBS/osc projects
     echo .osc > .gitignore
-    if [[ -e .gp/_src ]]; then
-	cp .gp/_src _src
+    if [[ -e $stash/_src ]]; then
+	cp $stash/_src _src
     else
 	touch _src
     fi
     git add _src .gitignore
+
+    # If invoked internally then we 
+    [[ $1 == "--quiet" ]] && return
+
+    cat <<EOF
+Now on ${pkg_branch} branch with _src and .gitignore.
+
+You should create suitable packaging on this branch.
+
+See https://wiki.merproject.org/wiki/Git_pkg for more help.
+
+EOF
+
 }
-
-pkg() {
-    # Guess the version
-    tag1=$(head -1 *.changes | cut -f2 -d\> | cut -f2 -d-)
-    tag1=${ver## }
-
-    # Guess the tarball
-    tarball=$(cd $patchdir; find * -name *t*gz)
-    [[ ! $tarball ]] && tarball=$(cd $patchdir; find * -name *t*bz2)
-    echo git:$tarball:$ver > _src
-
-    git add *changes *spec *yaml >/dev/null 2>&1
-    git rm --cached $tgz $tbz >/dev/null 2>&1
-
-    echo Guessed 
-    cat _src
-    echo for _src
-    echo Please check tags and see if any local patches need importing to git.
-    echo When done run
-    echo gp_setup --end
-    
-}
-
-
-
-finalise() {
-    git commit -m"Packaging commit with empty _src"
-    git checkout $current_branch
-
-    [[ $DO_STASH ]] && git stash pop
-
-    echo "${pkg_branch} created with an empty _src file."
-}
-
-[ -e .gb/env ] && . .gb/env
 
 case $1 in
     --existing )
@@ -231,13 +266,10 @@ case $1 in
 	use_existing $* ;;
 
     --start )
-	prepare ;;
+	prepare_pkg_branch ;;
 
     --pkg )
 	pkg ;;
-
-    --end )
-	finalise ;;
 
     * )
 	usage ;;
