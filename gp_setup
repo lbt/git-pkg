@@ -12,7 +12,7 @@
 pkg_branch=pkg-mer
 
 # Hack until packaged
-alias update_spec_patches=/mer/mer/gitpkg/update_spec_patches
+update_spec_patches=/mer/mer/gitpkg/update_spec_patches
 
 [[ -d .git ]] || {
     echo "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
@@ -22,13 +22,14 @@ alias update_spec_patches=/mer/mer/gitpkg/update_spec_patches
 usage() {
     cat <<EOF
     gp_setup --start | --end | -- pkg 
-    gp_setup --existing [--pristine] <tag> <packaging dir> <patch-tag>
+    gp_setup --existing [--pristine] <tag>|--unpack <packaging dir> [<patch-tag>]
  
        Used to setup an existing git repo for git-pkg
 
     --existing [--pristine] <tag> <packaging dir> <patch-tag>
        Take an existing set of packaging and apply to an upstream git
-       <tag> should be the tag/sha1 of the original git to use for the tarball
+       <tag> should be the tag/sha1 of the original git to use for the tarball or
+            --unpack to specify that the tarball should be unpacked and committed
        <packaging dir> is the source of the spec/yaml/changes/patches
        <patch-tag> is the id which will be used for the branch+tag for the patches
 
@@ -80,6 +81,14 @@ require_clean_work_tree () {
     fi
 }
 
+unpack_tarball() {
+    rm -rf *
+    tar xf $1
+    dir=$(ls)
+    mv $dir/* $dir/.* . 2>/dev/null
+    rmdir $dir
+}
+
 use_existing() {
 
     # better option parsing welcomed
@@ -115,9 +124,19 @@ use_existing() {
     tarball=$(cd $patchdir; find * -name *t*gz)
     [[ ! $tarball ]] && tarball=$(cd $patchdir; find * -name *t*bz2)
 
+    # If this is a pure pristine-tar with no git tree then just unpack
+    # the tarball as a starting point
+    if [[ $gp_type == "pristine-tar" && $tag == "--unpack" ]] ; then
+	echo "Pristine tar : Unpacking tarball as initial commit"
+	unpack_tarball $patchdir/$tarball	
+	git add .
+	git commit -m"Initial commit from $tarball"
+	tag="master"
+    fi
+
     # Branch from the appropriate tag
     git checkout -f $tag
-    git checkout -b $pbranch
+    if [[ $pbranch ]] ; then git checkout -b $pbranch; fi
 
     # Pristine tar approach needs some extra work
     # 1. Commit the tarball in packaging to pristine tar
@@ -127,14 +146,7 @@ use_existing() {
     if [[ $gp_type == "pristine-tar" ]] ; then
 	echo "Pristine tar : removing all files and unpacking tarball to record any delta to $tag"
 	pristine-tar commit $patchdir/$tarball $tag
-	rm -rf *
-	tar xf $patchdir/$tarball
-	dir=$(ls)
-	echo "Found $dir"
-	mv $dir/* $dir/.* . 2>/dev/null
-	echo remove $dir
-	rmdir $dir
-	echo done remove
+	unpack_tarball $patchdir/$tarball	
 	git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
 	git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
     fi
@@ -143,6 +155,8 @@ use_existing() {
     # We'll probably need a --fuzz option at some point
     # Keep the dir clean and we should abort/warn when patches don't apply
     for patch in $(cd $patchdir; grep Patch.*: *spec | cut -f2 -d:); do
+	if [[ ! $pbranch ]] ; then echo "Error: No patch-tag supplied and patches found"; exit 1; fi
+	
 	echo Applying $patch
 	if ! patch --fuzz=2 -p1 --no-backup-if-mismatch -s < $patchdir/$patch; then
 	    echo "Patch $patchdir/$patch seemed to apply badly - fixup in a different terminal and press return to commit it and continue"
@@ -205,9 +219,9 @@ use_existing() {
 	specify $yamlfile
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
-	    update_spec_patches < $specfile > $stash/$specfile
+	    $update_spec_patches < $specfile > $stash/$specfile
 	else
-	    update_spec_patches --setup_src < $specfile > $stash/$specfile
+	    $update_spec_patches --setup_src < $specfile > $stash/$specfile
 	fi
 	mv $stash/$specfile $specfile
     fi
