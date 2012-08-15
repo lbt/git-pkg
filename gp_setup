@@ -213,8 +213,10 @@ use_existing() {
 	if [[ $gp_type != "pristine-tar" ]] ; then
 	    echo "SetupOptions: -q -n src"  >> $yamlfile
 	fi
-	echo "Please edit/move the Patches section at the end of $yamlfile in another window and then press return"
-	read dummy
+	if [[ $have_patches ]] ; then
+	    echo "Please edit/move the Patches section at the end of $yamlfile in another window and then press return"
+	    read dummy
+	fi
 	# run spectacle and then edit .spec
 	specify $yamlfile
     else
