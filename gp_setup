@@ -218,7 +218,7 @@ use_existing() {
 	    read dummy
 	fi
 	# run spectacle and then edit .spec
-	specify $yamlfile
+	specify -N $yamlfile
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
 	    $update_spec_patches < $specfile > $stash/$specfile
