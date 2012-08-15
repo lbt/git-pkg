@@ -209,7 +209,7 @@ use_existing() {
     # Provide patch information for yaml/spec 
     if [[ -e $yamlfile ]]; then
         # We need update_yaml_patches
-	cat $stash/spec-yaml >> $yamlfile
+	[[ -e $stash/spec-yaml ]] && cat $stash/spec-yaml >> $yamlfile
 	if [[ $gp_type != "pristine-tar" ]] ; then
 	    echo "SetupOptions: -q -n src"  >> $yamlfile
 	fi
