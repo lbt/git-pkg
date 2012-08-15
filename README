@@ -1,5 +1,3 @@
-gitpkg
-
 In OBS we have a tarball and some packaging files.
 
 For a distro/product there are 2 types of package: native and
@@ -7,7 +5,7 @@ upstream: upstream may contain additional patches, native doesn't.
 
 Mer stores the source/packaging using git as the VCS
 
-Currently the raw tarball[1], patches and packaging files are stored in git.
+Currently for Mer Core the raw tarball[1], patches and packaging files are stored in git.
 
 This leads to:
 * inefficient storage: git is not designed to store large binaries efficiently
@@ -29,15 +27,34 @@ build : upstream git
 mer-gfx-tests : native git
 rpm : upstream git + autoconf code in released tarball
 
+The TLDR usage:
+
+# Project with an upstream git and some existing packaging
+git clone upstream
+gp_setup --existing v3.1.7 /mer/obs/cobs/Mer:Tools:Testing/pciutils/ v3.1.7-3
+
+# Project with an upstream git a pristine tar and some existing packaging
+git clone upstream
+gp_setup --existing --pristine v3.1.7 /mer/obs/cobs/Mer:Tools:Testing/pciutils/ v3.1.7-3
+
+# Project with no upstream git a pristine tar and some existing packaging but no patches
+git init
+gp_setup --existing --pristine --unpack /mer/obs/cobs/home:auke/xdelta
+
+# Project with no upstream git a pristine tar and some existing packaging with patches
+git init
+gp_setup --existing --pristine --unpack /mer/obs/cobs/Mer:Tools:Testing/tcl mer-master
+# needs tags for master and for mer-branch --unpack=<tag>
+
+
 Phases ??
 ################
-First step is to create a git repo that can create a tarball+packaging files 
+[X] First step is to create a git repo that can create a tarball+packaging files 
 
-Second step is to support the storage/recreation of arbitrary upstream
+[X] Second step is to support the storage/recreation of arbitrary upstream
 compressed tarballs (using pristine tar).
 
-Third step is to permit workers to get the source directly from a
-nearby git server.
+[ ] Third step is to permit workers to get the source directly from a nearby git server.
 
 Git Names
 ################
@@ -56,9 +73,9 @@ mer-<ver> : mer branch per upstream release (re-based with each
 	    needed (eg if a patch is removed between -1 and -2
 	    releases)
 
-mer-pkg :
+pkg-mer :
 	    Discrete commit tree holding any packaging.
-	    Tags of mer-pkg-<Mer-version>
+	    Tags of pkg-mer-<Mer-version>
 
 
 Git support for multiple sources is undefined yet
@@ -71,7 +88,7 @@ This file defines the src needed for building a package. It supports:
 
 * Single tarball
 * Patches
-* Multiple tarballs ?
+* Multiple tarballs (yes, kinda, see obs-server)
 
 One line:
 * git:<tarball>:<commit1>:<commit2>
@@ -88,10 +105,11 @@ pristine-tar:<filename>[:<commit1>:<commit2>] <filename> is extracted
     upstream branch to the pristine tar. At this point there's a mer
     branch. The first commit is a simple patch of any files added,
     modified or removed to make the released tarball. Subsequent
-    patches are Mer's 
+    patches are Mer's
     Patches for commits from <commit1> to <commit2> are placed in files
     according to git-patch. THE FIRST COMMIT IS SKIPPED as it's
     in the pristine tarball.
+    The filename is obtained from pristine-tar checkout
 
 ################################################################
 Notes:
@@ -109,9 +127,9 @@ http://stackoverflow.com/questions/1384325/in-git-is-there-a-simple-way-of-intro
 # create mer-$ver branch
 # cherry pick patches from last release
 # tag with Mer release tag
-# make mer-pkg tree
-git checkout --orphan mer-pkg
-git rm -rf .
+# make pkg-mer tree
+git checkout --orphan pkg-mer
+git rm -rf --cached .
 
 # add spec/yaml/changes
 # Create _src
@@ -182,7 +200,7 @@ package=osc
 mer_git=git@github.com:lbt/osc.git
 tar_commit=0.133.1
 tarball=osc-0.133.1.tar.bz2
-pkg_commit=mer-pkg
+pkg_commit=pkg-mer
 
 
 # branch the obs package
@@ -201,7 +219,7 @@ git clone -n --origin mer ${mer_git} _git
 mv _git/.git .
 rmdir _git
 
-git symbolic-ref HEAD refs/heads/mer-pkg 
+git symbolic-ref HEAD refs/heads/pkg-mer 
 # This next command shouldn't normally be needed
 rm -f .git/index 
 
@@ -224,6 +242,7 @@ osc co Mer.MDS:Core:i486 systemd
 # Notices the _src, can we skip the files mentioned in it?
 # git clone of mer-<area>/<pgk>
 # run make_src.py
+/mer/mer/gitpkg/make_src
 
 # Thoughts - can we link this osc .git into the chroot ?
 
@@ -250,3 +269,43 @@ git commit --allow-empty for the pristine-tar 'diff' commit
 
 
 pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches
+
+rm -rf *
+cp -a ../rpm-4.9.1.2/. .
+git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
+git commit -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
+
+Pushing to gerrit
+git push --tags mer-tools master pkg-mer pristine-tar v3.1.7-3
+
+TODO
+[ ]  spectacle .spec template should be %setup -q -n src
+
+
+
+# update a pristine tar setup
+git checkout master
+rm -rf *
+tar xf <tarball>
+mv */* .
+rmdir tarballdir
+git add .
+git commit -m"New upstream 8.5.12"
+pristine-tar commit ../tk8.5.12-src.tar.gz master
+cherry pick patches
+
+
+gp_setup
+git checkout pkg-mer
+copy in .spec .yaml .changes
+create _src
+git commit -am"Initial packaging"
+gp_make_src
+osc ar
+osc ci -m"Initial packaging"
+
+(possible variation using symlink'ed .git in .osc directory)
+
+
+gitpkg
+
