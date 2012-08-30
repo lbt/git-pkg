@@ -11,9 +11,6 @@
 
 pkg_branch=pkg-mer
 
-# Hack until packaged
-update_spec_patches=/mer/mer/gitpkg/update_spec_patches
-
 [[ -d .git ]] || {
     echo "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
     exit 1
@@ -257,9 +254,9 @@ use_existing() {
 	specify -N $yamlfile
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
-	    $update_spec_patches < $specfile > $stash/$specfile
+	    $gp_update_spec_patches < $specfile > $stash/$specfile
 	else
-	    $update_spec_patches --setup_src < $specfile > $stash/$specfile
+	    $gp_update_spec_patches --setup_src < $specfile > $stash/$specfile
 	fi
 	mv $stash/$specfile $specfile
     fi
