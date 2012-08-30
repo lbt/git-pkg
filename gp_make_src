@@ -20,7 +20,14 @@ class UnknownFormat(Exception):
     pass
 
 def checkout_packaging_branch(pkg):
-    subprocess.call(["/usr/bin/git", "checkout", "-f", pkg])
+    """
+    If we're on the packaging branch then no-op (this essentially lets
+    us run with uncommited changes to _src, spec etc so the patch-sets
+    can be added.)
+    """
+    branch = subprocess.check_output(["/usr/bin/git", "symbolic-ref", "HEAD"]).replace("refs/heads/", "").rstrip()
+    if (branch != pkg):
+        subprocess.call(["/usr/bin/git", "checkout", "-f", pkg])
 
 def guess_format(archive):
     if (re.search(r'\.t(ar\.)?gz$', archive)):
