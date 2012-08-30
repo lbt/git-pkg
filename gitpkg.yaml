@@ -13,3 +13,6 @@ Requires:
     - git
     - pristine-tar
     - python
+Configure: false
+SetupOptions: -q -n src
+Configure: none
