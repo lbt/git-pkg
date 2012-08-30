@@ -17,6 +17,6 @@ Configure: false
 SetupOptions: -q -n src
 Configure: none
 Files:
-  - "%{bindir}/gp_make_src"
-  - "%{bindir}/gp_setup"
-  - "%{bindir}/gp_update_spec_patches"
+  - "%{_bindir}/gp_make_src"
+  - "%{_bindir}/gp_setup"
+  - "%{_bindir}/gp_update_spec_patches"
