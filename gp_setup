@@ -129,7 +129,7 @@ use_existing() {
     [[ $pkgdir ]] || { echo "pkgdir not supplied"; exit 1; }
 
     [[ $gp_type == "pristine-tar" && ! $pbranch ]] && {
-	echo "Error: pristine-tar requires a patch-tag"; exit 1; }
+	echo "Error: pristine-tar requires a --patch-branch value"; exit 1; }
 
     # Somewhere to keep the patch info
     stash=$(mktemp -d)
@@ -290,7 +290,10 @@ prepare_pkg_branch() {
 
     # This creates the orphaned pkg-* branch
     git checkout --orphan ${pkg_branch}
-    git rm -q -rf . 
+    git rm -q -rf .
+
+    # Remove stray files that may have crept in
+    rm -f *
 
     # We typically expect to be used in OBS/osc projects
     echo .osc > .gitignore
