@@ -199,4 +199,12 @@ Notes:
 
 gitpkg uses git orphan branches. See   http://stackoverflow.com/questions/1384325/in-git-is-there-a-simple-way-of-introducing-an-unrelated-branch-to-a-repository
 
+Sage asked if it was possible to just clone the packaging or source - it is but it's not trivial:
+
+ git init $PKG
+ cd $PKG
+ git remote add mer-tools ssh://$USER@review.merproject.org:29418/mer-tools/$PKG
+ sed -i '/fetch/s/\*/\pkg-mer/g' .git/config
+ git fetch mer-tools
+
 
