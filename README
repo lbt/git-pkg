@@ -1,9 +1,9 @@
-In OBS we have a tarball and some packaging files.
+This tools supports managing rpm packaging (spec files and patches) from a git tree.
 
-For a distro/product there are 2 types of package: native and
-upstream: upstream may contain additional patches, native doesn't.
+Why is it needed?
+#################
 
-Mer stores the source/packaging using git as the VCS
+The rpm packaging used in Mer and derived products consists of a tarball and some packaging files. These packages need to be change controlled and that is where problems arise.
 
 Currently for Mer Core the raw tarball[1], patches and packaging files are stored in git.
 
@@ -20,6 +20,62 @@ also
 * maintain or improve RE efficiency
 * obviousness - eg "git checkout master" should have me ready to hack
 
+For a distro/product there are 2 types of package: native and upstream: upstream may contain additional patches, native doesn't. gitpkg is useful for both upstream and native packages and ensures that packaging is kept distinct from the code.
+
+Upstream code is distributed in many 
+
+The tool assumes that OBS is not being used as the primary store for code and packaging.
+
+Notes:
+
+* The tarball uses src/ as the location for git packages unless pristine-tar is in use
+
+What does it do?
+################
+
+There are 2 main uses:
+ * create tarball, spec and patches for building/uploading to OBS
+ * setup existing packages into a suitable git tree
+
+Normal Operation
+################
+
+Assuming a working package that needs changing.
+
+Link the git and osc directories: typically go to the osc co directory:
+  rm *
+  ln -s /path/to/package/.git .git   # (Should this be a local clone?)
+  gp_mkpkg
+
+Now do an osc build to prepare the build environment
+
+  osc build
+
+Work in the git code tree and use local osc build and quickbuild to get the code working.
+
+  git checkout <code branch>
+
+Once all code is correct, tag it and checkout the pkg branch
+
+Edit the _src file to update the tag for the patches and/or the tarball
+
+Generate the patches files:
+  gp_mkpkg
+
+(FIXME: This needs to support --update-spec and --update-yaml)
+
+Now edit the .spec file and update the Version: Release: (and Patches:/%build)
+
+Edit the .changes file
+FIXME: suggest some changes by parsing the git log)
+
+Add changes to git packaging branch (some operations may need more care)
+  git add *spec *changes _src
+
+Then commit and push
+  git commit -s
+  git push ....
+
 Examples
 
 acl : upstream tarball
@@ -27,64 +83,92 @@ build : upstream git
 mer-gfx-tests : native git
 rpm : upstream git + autoconf code in released tarball
 
-The TLDR usage:
 
-# Project with an upstream git and some existing packaging
-git clone upstream
-gp_setup --existing v3.1.7 /mer/obs/cobs/Mer:Tools:Testing/pciutils/ v3.1.7-3
+Using gp_setup
+##############
 
-# Project with an upstream git a pristine tar and some existing packaging
-git clone upstream
-gp_setup --existing --pristine v3.1.7 /mer/obs/cobs/Mer:Tools:Testing/pciutils/ v3.1.7-3
+This can be used to simply create a suitable packaging branch or to import existing packaging.
 
-# Project with no upstream git a pristine tar and some existing packaging but no patches
-git init
-gp_setup --existing --pristine --unpack /mer/obs/cobs/home:auke/xdelta
+The TLDR answer:
 
-# Project with no upstream git a pristine tar and some existing packaging with patches
-git init
-gp_setup --existing --pristine --unpack /mer/obs/cobs/Mer:Tools:Testing/tcl mer-master
-# needs tags for master and for mer-branch --unpack=<tag>
+  gp_setup --existing --pristine --base=RELEASE_0_9_7 --pkgdir=/mer/obs/cobs/Project:KDE:Mer_Extras/oprofile --patch-branch=0.9.7
+
+Worked Example: Importing oprofile
+##################################
+
+Upstream uses git so we'll use --base to base off it after cloning it:
+  git clone git://oprofile.git.sourceforge.net/gitroot/oprofile/oprofile
+  cd oprofile
+
+Determine the tag and verify if a pristine-tar should also be used (eg for autogen.sh)
+
+We have some packaging so check it out (in a different window):
+  osc co Project:KDE:Mer_Extras oprofile
+so we can use --existing
+
+Looking at the tarball there are changes to the git tree (autogen.sh etc) so we'll use --pristine
+
+The release tag is "RELEASE_0_9_7" so that will be the --base value; we'll also have a patch-branch of 0.9.7 which we can make Mer release tags on if we add patches.
+
+The command then is:
+
+  gp_setup --existing --pristine --base=RELEASE_0_9_7 --pkgdir=/mer/obs/cobs/Project:KDE:Mer_Extras/oprofile --patch-branch=0.9.7
 
 
-Phases ??
-################
-[X] First step is to create a git repo that can create a tarball+packaging files 
+More examples:
 
-[X] Second step is to support the storage/recreation of arbitrary upstream
-compressed tarballs (using pristine tar).
+Project with an upstream git and some existing packaging
 
-[ ] Third step is to permit workers to get the source directly from a nearby git server.
+  git clone upstream
+  gp_setup --existing --base=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --patch-branch=v3.1.7-3
 
-Git Names
-################
+Project with an upstream git, a pristine tar and some existing packaging
+
+  git clone upstream
+  gp_setup --existing --pristine --base=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --patch-branch=v3.1.7-3
+
+Project with no upstream git a pristine tar and some existing packaging but no patches ##FIXME##
+  git init
+  gp_setup --existing --pristine --unpack=/mer/obs/cobs/home:auke/xdelta
+
+Project with no upstream git a pristine tar and some existing packaging with patches
+  git init
+  gp_setup --existing --pristine --unpack=/mer/obs/cobs/Mer:Tools:Testing/tcl --base=
+(needs tags for master and for mer-branch --unpack=<tag>)
+
+
+
+Git Names and branch layouts
+############################
 
 ver is X.Y.Z and is conceptually an upstream version and ideally a tag.
 
 X.Y.Z-R is the mer version/tag
 
-upstream  : upstream master branch (can be anything - often a specific
-	    branch with rc releases eg in rpm or OBS)
 
-mer-<ver> : mer branch per upstream release (re-based with each
+upstream/ : upstream or master branch (can be anything - often a specific
+master	    branch with rc releases eg in rpm or OBS)
+
+mer-<ver> : mer branch per upstream release (re-created based on each
 	    upstream release). Initial commit is the pristine-tar
 	    delta. Subsequent commits are patches. Tags are made on
 	    here to preserve commits and the branch may be re-based if
 	    needed (eg if a patch is removed between -1 and -2
 	    releases)
+	    Tags here will be of the form mer-X.Y.Z-R
 
-pkg-mer :
-	    Discrete commit tree holding any packaging.
-	    Tags of pkg-mer-<Mer-version>
-
-
-Git support for multiple sources is undefined yet
+pkg-mer :   Discrete commit tree holding any packaging.
+	    Tags of pkg-mer-X.Y.Z-R
 
 
-################################################################
+Git support for multiple sources is possible but complex
+
+
 The _src file
+#############
 
-This file defines the src needed for building a package. It supports:
+This file defines the src needed for building a package.
+It supports:
 
 * Single tarball
 * Patches
@@ -111,201 +195,8 @@ pristine-tar:<filename>[:<commit1>:<commit2>] <filename> is extracted
     in the pristine tarball.
     The filename is obtained from pristine-tar checkout
 
-################################################################
 Notes:
 
-git orphan
-http://stackoverflow.com/questions/1384325/in-git-is-there-a-simple-way-of-introducing-an-unrelated-branch-to-a-repository
+gitpkg uses git orphan branches. See   http://stackoverflow.com/questions/1384325/in-git-is-there-a-simple-way-of-introducing-an-unrelated-branch-to-a-repository
 
-################################################################
-# Tasks
-################
-# Prepare a mer git repo from a source git tree (no release tarball)
-
-# Get remote git repo
-# Checkout tag for current release
-# create mer-$ver branch
-# cherry pick patches from last release
-# tag with Mer release tag
-# make pkg-mer tree
-git checkout --orphan pkg-mer
-git rm -rf --cached .
-
-# add spec/yaml/changes
-# Create _src
-# Generate tarball/patches
-# upload to OBS
-
-################
-# Prepare a mer git repo from a source git tree (with release tarball)
-
-# Get remote git repo
-# Checkout tag for current release
-# pristine-tar commit <release-tarball>
-# rm -rf everything and unpack tarball to .
-git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
-git commit -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
-# create mer-$ver branch
-# unpack release tarball and commit all changes
-# cherry pick patches from last release
-# tag with Mer
-
-git remote rename origin upstream
-git branch mer $TAG
-
-
-################
-# Prepare a mer git repo from a mer git tree
-
-################
-# Prepare a mer git repo from an osc tree
-
-
-################
-# setup new OBS project with existing packaging and a mer-flavoured upstream git
-
-# The mer-flavoured git should have:
-#  $upstream
-#    A 'random' branch/tag (corresponds to true upstream git base
-#    for this release)
-#  [$pristine-tar-tag]
-#    Optional pristine tar information
-#  mer-$ver
-#    branch that corresponds to mer-ised working branch, typically based
-#     on a version + including local commits/patches
-#  mer-<version>
-#    tags on mer-master, sometimes leaf commits on old branches when
-#    mer-master is rebased
-
-
-user_branches=home:lbt:branches
-
-#package=acl
-# pristine tar
-
-project=Mer.MDS:Core:i486
-package=build
-mer_git=git://github.com/Merproject/obs-build.git
-tar_commit=1d85b8933db1264aeab098f30425e1c4fd4edd13
-tarball=build-2011.03.29.tar.gz
-
-project=Mer.MDS:Core:i486
-package=mer-gfx-tests
-mer_git=
-tar_commit=
-tarball=
-
-project=Mer:Tools:Testing
-package=osc
-mer_git=git@github.com:lbt/osc.git
-tar_commit=0.133.1
-tarball=osc-0.133.1.tar.bz2
-pkg_commit=pkg-mer
-
-
-# branch the obs package
-osc branch $project $package
-
-# or make the obs package
-osc meta pkg ${user_branches}:${project} $package -E
-
-osc co ${user_branches}:${project}/$package
-# Make a package dir
-cd  ${user_branches}:${project}/$package
-
-# Clone mer git into it
-# Note that --bare and --mirror won't do the right thing
-git clone -n --origin mer ${mer_git} _git
-mv _git/.git .
-rmdir _git
-
-git symbolic-ref HEAD refs/heads/pkg-mer 
-# This next command shouldn't normally be needed
-rm -f .git/index 
-
-# Remove tarball and all patches (should be in git)
-rm -f $tarball *.patch
-echo git:$tarball:$tar_commit > _src
-echo patches:$tar_commit:mer-master >> _src
-echo .osc > .gitignore
-
-git add * .gitignore
-git commit -s -m "Initial commit of packaging for $package using $tar_commit"
-
-################
-# Submit change for review
-
-# 
-osc branch Mer.MDS:Core:i486 systemd
-
-osc co Mer.MDS:Core:i486 systemd
-# Notices the _src, can we skip the files mentioned in it?
-# git clone of mer-<area>/<pgk>
-# run make_src.py
-/mer/mer/gitpkg/make_src
-
-# Thoughts - can we link this osc .git into the chroot ?
-
-
-################
-# Import a new upstream version
-
-################
-# 2 changes sent for review, how to rebase 2nd
-
-################################################################
-
-
-[1] tarball can be any archive file: zip, cpio etc etc
-
-
-git addremove:
-  git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
-
-apply patches in spec file into git:
-
-
-git commit --allow-empty for the pristine-tar 'diff' commit
-
-
-pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches
-
-rm -rf *
-cp -a ../rpm-4.9.1.2/. .
-git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
-git commit -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
-
-Pushing to gerrit
-git push --tags mer-tools master pkg-mer pristine-tar v3.1.7-3
-
-TODO
-[ ]  spectacle .spec template should be %setup -q -n src
-
-
-
-# update a pristine tar setup
-git checkout master
-rm -rf *
-tar xf <tarball>
-mv */* .
-rmdir tarballdir
-git add .
-git commit -m"New upstream 8.5.12"
-pristine-tar commit ../tk8.5.12-src.tar.gz master
-cherry pick patches
-
-
-gp_setup
-git checkout pkg-mer
-copy in .spec .yaml .changes
-create _src
-git commit -am"Initial packaging"
-gp_make_src
-osc ar
-osc ci -m"Initial packaging"
-
-(possible variation using symlink'ed .git in .osc directory)
-
-
-gitpkg
 
