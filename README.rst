@@ -166,12 +166,19 @@ X.Y.Z-R is the mer version/tag
 
  mer-<ver>
             mer branch per upstream release (re-created based on each
-	    upstream release). Initial commit is the pristine-tar
-	    delta. Subsequent commits are patches. Tags are made on
-	    here to preserve commits and the branch may be re-based if
-	    needed (eg if a patch is removed between -1 and -2
-	    releases)
-	    Tags here will be of the form mer-X.Y.Z-R
+	    upstream release).
+
+	    Commits are handled as patches in spec files.
+
+	    If using pristine-tar then the initial commit is the
+	    pristine-tar delta and is not applied as a patch - it's
+	    simply there to allow development patches apply cleanly to
+	    the tarball.
+
+            Tags are made on here to preserve commits and the branch
+	    may be re-based if needed (eg if a patch is removed
+	    between -1 and -2 releases) Tags here will be of the form
+	    mer-X.Y.Z-R
 
  pkg-mer
             Discrete commit tree holding any packaging.
@@ -180,26 +187,38 @@ X.Y.Z-R is the mer version/tag
 
 Git support for multiple sources is possible but complex
 
-Suggested Naming
-================
+Suggested Naming For Non-native packages
+========================================
 
 The 'upstream' branch will usually be called master but this isn't
 very important.
 
-There should be tags on the upstream code repo with a version.  Create
-a branch called mer-<version> based from this tag.  Patches/commits
-should be on the mer-<version> branch.
+There should be tags on the upstream code repo with a version.  If
+there are any local patches or if pristine-tar is being used then
+create a branch called mer-<version> based from this tag.
+Mer specific patches/commits should be on the mer-<version> branch.
 
 Tags of the form mer-<version>-<release> should be made on the
 mer-<version> branch.
 
-In the mer-pkg branch, there should be tags made called
-mer-pkg-<version>-<release>. Typically the _src will be
-git:<name>:<version tag>:<version-release tag>.
+In the pkg-mer branch, there should be tags made called
+pkg-mer-<version>-<release>. Typically the _src will be
+git:<name>:<version tag>:mer-<version-release tag>.
 
 To be explicit mer-<version>-<release> tags should be made against the
 code repo even when there has been no change to the code.
 
+Suggested Naming For Native packages
+====================================
+
+The main development branch will usually be called master but this
+isn't very important.
+
+There should be tags on the main branch with a version.
+
+In the pkg-mer branch, there should be tags made called
+pkg-mer-<version>-<release>. Typically the _src will be
+git:<name>:<version tag>.
 
 
 The _src file
