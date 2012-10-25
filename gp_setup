@@ -79,10 +79,7 @@ require_clean_work_tree () {
 
 unpack_tarball() {
     rm -rf *
-    tar xf $1
-    dir=$(ls)
-    mv $dir/* $dir/.* . 2>/dev/null
-    rmdir $dir
+    tar --transform 's_[^/]*/__' -xf $1
 }
 
 use_existing() {

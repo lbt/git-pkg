@@ -13,21 +13,27 @@
 
 import re
 import subprocess
+import argparse
 
 pkg_branch="pkg-mer"
 
 class UnknownFormat(Exception):
     pass
 
-def checkout_packaging_branch(pkg):
+def checkout_packaging_branch(pkg, force):
     """
-    If we're on the packaging branch then no-op (this essentially lets
-    us run with uncommited changes to _src, spec etc so the patch-sets
-    can be added.)
+    Ensure we're on the latest packaging branch commit.
+    If force is False and we're on the packaging branch then no-op
+    (this essentially lets us run with uncommited changes to _src,
+    spec etc so the patch-sets can be added.)
     """
+    if (force):
+        subprocess.call(["/usr/bin/git", "checkout", "-f", pkg])
+
     branch = subprocess.check_output(["/usr/bin/git", "symbolic-ref", "HEAD"]).replace("refs/heads/", "").rstrip()
     if (branch != pkg):
-        subprocess.call(["/usr/bin/git", "checkout", "-f", pkg])
+        print "Must be on the %s branch to use --no-checkout" % pkg
+        system.exit(1)
 
 def guess_format(archive):
     if (re.search(r'\.t(ar\.)?gz$', archive)):
@@ -128,8 +134,14 @@ def prepare_tarball_and_patches():
         else:
             print "No patches requested"
                             
+parser = argparse.ArgumentParser(description='gitpkg build preparation')
+parser.add_argument('-n', '--no-checkout',
+                    dest='force_checkout', action='store_false',
+                    help="Don't force checkout the latest pkg branch (useful if working on packaging)")
 
-checkout_packaging_branch(pkg_branch)
+args = parser.parse_args()
+
+checkout_packaging_branch(pkg_branch, args.force_checkout)
 prepare_tarball_and_patches()
 
 

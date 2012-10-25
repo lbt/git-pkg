@@ -1,4 +1,4 @@
-This tools supports managing rpm packaging (spec files and patches) from a git tree.
+This tool supports managing rpm packaging (spec files and patches) from a git tree.
 
 Why is it needed?
 =================
@@ -139,10 +139,10 @@ Project with an upstream git, a pristine tar and some existing packaging::
   git clone upstream
   gp_setup --existing --pristine --base=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --patch-branch=v3.1.7-3
 
-Project with no upstream git a pristine tar and some existing packaging but no patches ##FIXME##::
+Project with no upstream git a pristine tar and some existing packaging but no patches (using sudo as an example)::
 
   git init
-  gp_setup --existing --pristine --unpack=/mer/obs/cobs/home:auke/xdelta
+  gp_setup --existing --pristine --unpack=1.8.2 --pkgdir=/mer/obs/cobs/home:lbt:branches:Mer:Tools:Testing/sudo --patch-branch=mer-1.8.2
 
 Project with no upstream git a pristine tar and some existing packaging with patches::
 
@@ -266,4 +266,127 @@ Sage asked if it was possible to just clone the packaging or source - it is but 
  git remote add mer-tools ssh://$USER@review.merproject.org:29418/mer-tools/$PKG
  sed -i '/fetch/s/\*/\pkg-mer/g' .git/config
  git fetch mer-tools
+
+
+
+Walkthrough for Powertop
+========================
+
+First we must create an osc package to build the source in.
+
+Go to a suitable OBS directory with Mer_Core_i486 or similar as a repo target.
+
+Now create the package:
+  
+  osc mkpac powertop
+  cd powertop
+
+Now we're in a suitable osc directory we can setup git.
+
+Find the upstream, clone and move the .git dir to the osc dir:
+
+ git clone git://github.com/fenrus75/powertop.git
+ mv powertop/.git .
+ rm -rf powertop
+
+What tag are we based on?
+
+ git checkout -f v2.1.1
+ gp_setup --pkg
+
+At this point you are in the packaging branch
+In the future gp_setup --pkg=<tag> will do the git checkout <tag> next release
+
+Edit yaml/spec/changes and create some packaging (we'll cheat and use philippe's):
+
+ curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.changes
+ curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.spec
+ curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.yaml
+
+Describe in the _src file how OBS gets the source (in this case, use simple git archive to make a tar.bz2 based on the tag v2.1.1)
+
+ echo git:powertop-v2.1.1.tar.bz2:v2.1.1 > _src
+ git add powertop.* _src
+
+Check to ensure it builds:
+
+ gp_mkpkg
+ osc build Mer_Core_i486 i586
+
+All good, commit:
+ git commit -s
+
+
+Walkthrough for adding a patch to osc
+=====================================
+
+Branch the package on the OBS:
+
+ osc branch Mer:Tools:Testing osc
+ osc co home:${USER}:branches:Mer:Tools:Testing osc
+ cd home:${USER}:branches:Mer:Tools:Testing/osc
+
+on github, fork the git repo and checkout your copy:
+
+ git clone --bare git@github.com:${USER}/osc.git .git
+ git config -f .git/config core.bare false
+
+Checkout the packaging
+ gp_mkpkg
+
+Now hack on the code
+ mer-0.135.1-2
+
+FIXME::Complete this
+
+Walkthrough upgrading a pristine tar package (sudo)
+===================================================
+
+cd home:lbt:branches:Mer:Tools:Testing
+osc branch Mer:Tools:Testing sudo
+osc co sudo
+cd sudo
+# gp_clone git@github.com:lbt/sudo.git
+# (actually this can do gh clone to ~ first too)
+git clone --no-checkout --bare git@github.com:lbt/sudo.git .git
+git config -f .git/config core.bare false
+git checkout -f pkg-mer
+gp_mkpkg 
+
+Now to update it. (# This section is gp_import_tarball)
+(cd ..; curl -O http://www.sudo.ws/sudo/dist/sudo-1.8.6p3.tar.gz)
+git checkout master
+git rm -rf *
+tar --transform 's_[^/]*/__' -xf ../sudo-1.8.6p3.tar.gz
+git add .
+git commit -sm"commit from sudo-1.8.6p3.tar.gz"
+git tag 1.8.6p3
+git checkout -b mer-1.8.6p3
+pristine-tar commit ../sudo-1.8.6p3.tar.gz  1.8.6p3
+git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
+git tag mer-1.8.6p3-1
+echo pristine-tar:sudo-1.8.6p3.tar.gz:mer-1.8.6p3-1
+
+git checkout pkg-mer
+
+# Hack on .yaml and .changes
+specify
+# Hack on .spec if needed
+gp_mkpkg 
+osc build Mer_Core_i486 i586
+# repeat cycle
+
+# Need to describe working on the source tree too
+
+osc ar
+osc ci
+# verify build on all arches
+
+git commit -as
+git tag pkg-mer-1.8.6p3-1
+git push --tags origin
+
+osc sr home:lbt:branches:Mer:Tools:Testing sudo Mer:Tools:Testing
+git pull request on github
+
 
