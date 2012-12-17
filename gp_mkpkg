@@ -111,7 +111,7 @@ def prepare_tarball_and_patches():
         if tag2:
             patches = subprocess.check_output(
                 [ "/usr/bin/git", "format-patch", "--find-renames",
-                  "--binary", "-N", "--no-numbered",
+                  "--binary", "--no-renames", "-N", "--no-numbered",
                   "%(tag1)s..%(tag2)s" % locals() ],
                 shell=False).splitlines()
 
