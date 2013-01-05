@@ -66,7 +66,7 @@ def prepare_tarball_and_patches():
             # make a tarball at tag1 and patches to tag2 (if present)
             if len(src) < 3:
                 raise Exception("Not enough arguments for 'git' line in _src")
-            
+
             tarball, tag1 = src[1:3]
             if len(src) > 3:
                 tag2 = src[3]
@@ -89,7 +89,7 @@ def prepare_tarball_and_patches():
             # (if present) skipping the special 'pristine-tar' diff patch
             if len(src) < 3:
                 raise Exception("Not enough arguments for 'pristine-tar' line in _src")
-            
+
             tarball, tag1 = src[1:3]
             if len(src) > 3:
                 tag2 = src[3]
@@ -133,15 +133,16 @@ def prepare_tarball_and_patches():
                 print "- %(patch)s" % locals()
         else:
             print "No patches requested"
-                            
+
 parser = argparse.ArgumentParser(description='gitpkg build preparation')
 parser.add_argument('-n', '--no-checkout',
                     dest='force_checkout', action='store_false',
                     help="Don't force checkout the latest pkg branch (useful if working on packaging)")
-
+parser.add_argument('tag', metavar='tag', type=str, nargs='?',
+                    default=pkg_branch,
+                    help='A tag to force checkout')
 args = parser.parse_args()
 
-checkout_packaging_branch(pkg_branch, args.force_checkout)
+# Checkout the tag (default is the hardcoded pkg_branch)
+checkout_packaging_branch(args.tag, args.force_checkout)
 prepare_tarball_and_patches()
-
-
