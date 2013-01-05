@@ -1,0 +1,19 @@
+<service name="gitpkg">
+  <summary>Clone from gitpkg flavoured git repos</summary>
+  <description>This service uses git to pull/clone repos and then extracts the tarball/packaging.</description>
+  <parameter name="service">
+    <description>Approved Git Service such as gitorious/github etc</description>
+    <allowedvalue>github</allowedvalue>
+    <allowedvalue>gitorious</allowedvalue>
+    <allowedvalue>Mer</allowedvalue>
+    <required/>
+  </parameter>
+  <parameter name="repo">
+    <description>Name of the repository to clone or remote update (including path)</description>
+    <required/>
+  </parameter>
+  <parameter name="tag">
+    <description>Tag containing the _src file to build</description>
+    <required/>
+  </parameter>
+</service>
