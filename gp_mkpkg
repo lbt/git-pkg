@@ -30,8 +30,13 @@ def checkout_packaging_branch(pkg, force):
     if (force):
         subprocess.call(["/usr/bin/git", "checkout", "-f", pkg])
 
-    branch = subprocess.check_output(["/usr/bin/git", "symbolic-ref", "HEAD"]).replace("refs/heads/", "").rstrip()
-    if (branch != pkg):
+    try:
+        branch = subprocess.check_output(["/usr/bin/git", "symbolic-ref", "HEAD"],
+                                         stderr=subprocess.STDOUT).replace("refs/heads/", "").rstrip()
+    except subprocess.CalledProcessError:
+        return # We're not on a symbolic ref; assume tag
+
+    if (not force and branch != pkg):
         print "Must be on the %s branch to use --no-checkout" % pkg
         system.exit(1)
 
