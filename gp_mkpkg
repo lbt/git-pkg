@@ -113,9 +113,10 @@ def prepare_tarball_and_patches():
             raise Exception("_src storage %s not recognised" % vcs)
 
         # If a tag range was specified, create patches
+        # -M is --find-renames but that's not available on suse 11.4
         if tag2:
             patches = subprocess.check_output(
-                [ "/usr/bin/git", "format-patch", "--find-renames",
+                [ "/usr/bin/git", "format-patch", "-M",
                   "--binary", "-N", "--no-numbered",
                   "%(tag1)s..%(tag2)s" % locals() ],
                 shell=False).splitlines()
