@@ -11,7 +11,7 @@
 STORE=/data/service/gitpkg
 SVC=""
 REPO=""
-
+OUTDIR=""
 
 while test $# -gt 0; do
   case $1 in
@@ -33,7 +33,7 @@ while test $# -gt 0; do
     ;;
     *)
       echo Unknown parameter $1.
-      echo 'Usage: gitpkg --service [github|gitorious|mer] --repo <path/pkg>'
+      echo 'Usage: gitpkg --service (github|gitorious|mer) --repo <path/pkg> [--outdir <outdir>]'
       echo 'eg gitpkg --service github --repo lbt/powertop'
       exit 1
     ;;
@@ -78,7 +78,9 @@ else
 fi
 /usr/lib/obs/service/gp_mkpkg $TAG
 
-# Move all files to OUTDIR
-mv $(find . -mindepth 1 -maxdepth 1 -not -name .git) $OUTDIR
+if [ ! -z "$OUTDIR" ]; then
+    # Move all files to OUTDIR
+    mv $(find . -mindepth 1 -maxdepth 1 -not -name .git) $OUTDIR
+fi
 
 exit 0
