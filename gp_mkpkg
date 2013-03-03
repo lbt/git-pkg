@@ -12,13 +12,27 @@
 #   labelled "pristine-tar" in the mer-<version> branch
 
 import re
+import os
 import subprocess
 import argparse
+import sys
 
 pkg_branch="pkg-mer"
 
+# Allow overriding of "git' command via the "GIT" environment variable
+GIT_CMD = os.environ.get('GIT', 'git')
+
 class UnknownFormat(Exception):
     pass
+
+def git(*args):
+    """Run git with arguments, return stdout as string"""
+    return subprocess.check_output([GIT_CMD] + list(args))
+
+def fail(msg, *args):
+    """Report an error message and exit with failure"""
+    print >>sys.stderr, 'ERROR:', msg % args
+    sys.exit(1)
 
 def checkout_packaging_branch(pkg, force):
     """
@@ -27,18 +41,16 @@ def checkout_packaging_branch(pkg, force):
     (this essentially lets us run with uncommited changes to _src,
     spec etc so the patch-sets can be added.)
     """
-    if (force):
-        subprocess.call(["/usr/bin/git", "checkout", "-f", pkg])
+    if force:
+        git('checkout', '-f', pkg)
 
     try:
-        branch = subprocess.check_output(["/usr/bin/git", "symbolic-ref", "HEAD"],
-                                         stderr=subprocess.STDOUT).replace("refs/heads/", "").rstrip()
+        branch = git('symbolic-ref', 'HEAD').replace('refs/heads/', '').rstrip()
     except subprocess.CalledProcessError:
         return # We're not on a symbolic ref; assume tag
 
-    if (not force and branch != pkg):
-        print "Must be on the %s branch to use --no-checkout" % pkg
-        system.exit(1)
+    if not force and branch != pkg:
+        fail('Must be on the %s branch to use --no-checkout', pkg)
 
 def guess_format(archive):
     if (re.search(r'\.t(ar\.)?gz$', archive)):
@@ -49,9 +61,7 @@ def guess_format(archive):
         raise UnknownFormat()
 
 def count_commits(a, b):
-    return int(
-        subprocess.check_output("/usr/bin/git rev-list %s..%s | wc -l" %
-                                (a,b), shell=True))
+    return len(git('rev-list', '..'.join((a, b))).splitlines())
 
 
 def prepare_tarball_and_patches():
@@ -81,12 +91,11 @@ def prepare_tarball_and_patches():
                 format, compression = guess_format(tarball)
                 # Make a suitable tarball
                 subprocess.call(
-                    "/usr/bin/git archive --format=%(format)s --prefix=src/ %(tag1)s "
+                    GIT_CMD + " archive --format=%(format)s --prefix=src/ %(tag1)s "
                     "| %(compression)s > %(tarball)s" % locals(),
                     shell=True)
             except UnknownFormat :
-                print "Can't determine format of tarball %s" % tarball
-                system.exit(1)
+                fail("Can't determine format of tarball %s", tarball)
 
         elif (vcs == "pristine-tar"):
             # pristine-tar:<tarball>:<tag1>:<tag2>
@@ -115,11 +124,8 @@ def prepare_tarball_and_patches():
         # If a tag range was specified, create patches
         # -M is --find-renames but that's not available on suse 11.4
         if tag2:
-            patches = subprocess.check_output(
-                [ "/usr/bin/git", "format-patch", "-M",
-                  "--binary", "--no-renames", "-N", "--no-numbered",
-                  "%(tag1)s..%(tag2)s" % locals() ],
-                shell=False).splitlines()
+            patches = git('format-patch', '-M', '--binary', '--no-renames',
+                    '-N', '--no-numbered', '..'.join((tag1, tag2))).splitlines()
 
             print "Patch source entries and %patch entries for .spec file\n"
             count = 1

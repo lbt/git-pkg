@@ -5,28 +5,31 @@ Why is it needed?
 
 The rpm packaging used in Mer and derived products consists of a tarball and some packaging files. These packages need to be change controlled and that is where problems arise.
 
-Currently for Mer Core the raw tarball[1], patches and packaging files are stored in git.
+Currently for Mer Core the raw tarball, patches and packaging files are stored in git.
 
 This leads to:
 
-* inefficient storage: git is not designed to store large binaries efficiently
-* opacity: files in the tarball cannot be examined without extracting and unpacking
-* dissociation: the upstream change history is lost
+* **Inefficient storage**: git is not designed to store large binaries efficiently
+* **Opacity**: files in the tarball cannot be examined without extracting and unpacking
+* **Dissociation**: the upstream change history is lost
 
-So clearly the objectives are:
+So clearly the main objectives are:
 
-* increase storage efficiency
-* reduce opacity
-* retain association with upstream
+* Increase storage efficiency
+* Reduce opacity (increase transparency)
+* Retain association with upstream
 
-also
+Other objectives:
 
-* maintain or improve RE efficiency
-* obviousness - eg "git checkout master" should have me ready to hack
+* Maintain or improve RE efficiency
+* Obviousness - eg "``git checkout master``" should have me ready to hack
 
-For a distro/product there are 2 types of package: native and upstream: upstream may contain additional patches, native doesn't. gitpkg is useful for both upstream and native packages and ensures that packaging is kept distinct from the code.
+For a distro/product there are 2 types of package:
 
-Upstream code is distributed in many 
+* **Native** packages are developed directly for/in the distro or product (no patches!)
+* **Upstream** packages are developed elsewhere, and may contain additional patches for the product
+
+gitpkg is useful for both upstream and native packages and ensures that packaging is kept distinct from the code.
 
 The tool assumes that OBS is not being used as the primary store for code and packaging.
 
@@ -39,8 +42,8 @@ What does it do?
 
 There are 2 main uses:
 
- * create tarball, spec and patches for building/uploading to OBS
- * setup existing packages into a suitable git tree
+* create tarball, spec and patches for building/uploading to OBS
+* setup existing packages into a suitable git tree
 
 Normal Operation
 ================
@@ -63,7 +66,7 @@ Work in the git code tree and use local osc build and quickbuild to get the code
 
 Once all code is correct, tag it and checkout the pkg branch
 
-Edit the _src file to update the tag for the patches and/or the tarball::
+Edit the _src file to update the tag for the patches and/or the tarball.
 
 Generate the patches files::
 
@@ -85,12 +88,12 @@ Then commit and push::
   git commit -s
   git push ....
 
-Examples
+Example packages:
 
- acl : upstream tarball
- build : upstream git
- mer-gfx-tests : native git
- rpm : upstream git + autoconf code in released tarball
+* Upstream tarball: ``acl``
+* Upstream git: ``build``
+* Upstream git + autoconf code in released tarball: ``rpm``
+* Native git: ``mer-gfx-tests``
 
 
 Using gp_setup
@@ -148,8 +151,8 @@ Project with no upstream git a pristine tar and some existing packaging with pat
 
   git init
   gp_setup --existing --pristine --unpack=/mer/obs/cobs/Mer:Tools:Testing/tcl --base=
-(needs tags for master and for mer-branch --unpack=<tag>)
 
+(needs tags for master and for mer-branch --unpack=<tag>)
 
 
 Git Names and branch layouts
@@ -257,7 +260,9 @@ One line:
 Notes
 =====
 
-gitpkg uses git orphan branches. See   http://stackoverflow.com/questions/1384325/in-git-is-there-a-simple-way-of-introducing-an-unrelated-branch-to-a-repository
+gitpkg uses `Git orphan branches`_.
+
+.. _Git orphan branches: http://stackoverflow.com/questions/1384325/in-git-is-there-a-simple-way-of-introducing-an-unrelated-branch-to-a-repository
 
 Sage asked if it was possible to just clone the packaging or source - it is but it's not trivial::
 

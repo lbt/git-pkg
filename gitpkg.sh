@@ -11,7 +11,23 @@
 STORE=/data/service/gitpkg
 SVC=""
 REPO=""
+OUTDIR=""
 
+SERVICES="github|gitorious|mer"
+
+usage() {
+  cat <<EOF
+Usage: $0 --service <service> --repo <path/pkg> [--outdir <outdir>]
+Options:
+  --service <service>      Git hosting service to use ($SERVICES)
+  --repo <path/pkg>        Repository path to check out
+  --outdir <outdir>        Move files to outdir after checkout (optional)
+
+Examples:
+  $0 --service github --repo lbt/powertop
+
+EOF
+}
 
 while test $# -gt 0; do
   case $1 in
@@ -31,10 +47,13 @@ while test $# -gt 0; do
       OUTDIR="$2"
       shift
     ;;
+    -h|*-help)
+      usage
+      exit 0
+    ;;
     *)
+      usage
       echo Unknown parameter $1.
-      echo 'Usage: gitpkg --service [github|gitorious|mer] --repo <path/pkg>'
-      echo 'eg gitpkg --service github --repo lbt/powertop'
       exit 1
     ;;
   esac
@@ -42,10 +61,12 @@ while test $# -gt 0; do
 done
 
 if [ -z "$SVC" ]; then
-  echo "ERROR: no --service parameter (github|gitorious|mer)!"
+  usage
+  echo "ERROR: no --service parameter ($SERVICES)"
   exit 1
 fi
 if [ -z "$REPO" ]; then
+  usage
   echo "ERROR: no --repo parameter"
   exit 1
 fi
@@ -78,7 +99,9 @@ else
 fi
 /usr/lib/obs/service/gp_mkpkg $TAG
 
-# Move all files to OUTDIR
-mv $(find . -mindepth 1 -maxdepth 1 -not -name .git) $OUTDIR
+if [ ! -z "$OUTDIR" ]; then
+    # Move all files to OUTDIR
+    mv $(find . -mindepth 1 -maxdepth 1 -not -name .git) $OUTDIR
+fi
 
 exit 0
