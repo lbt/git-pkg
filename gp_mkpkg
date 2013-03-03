@@ -21,6 +21,11 @@ pkg_branch="pkg-mer"
 class UnknownFormat(Exception):
     pass
 
+def fail(msg, *args):
+    """Report an error message and exit with failure"""
+    print >>sys.stderr, 'ERROR:', msg % args
+    sys.exit(1)
+
 def checkout_packaging_branch(pkg, force):
     """
     Ensure we're on the latest packaging branch commit.
@@ -37,9 +42,8 @@ def checkout_packaging_branch(pkg, force):
     except subprocess.CalledProcessError:
         return # We're not on a symbolic ref; assume tag
 
-    if (not force and branch != pkg):
-        print "Must be on the %s branch to use --no-checkout" % pkg
-        sys.exit(1)
+    if not force and branch != pkg:
+        fail('Must be on the %s branch to use --no-checkout', pkg)
 
 def guess_format(archive):
     if (re.search(r'\.t(ar\.)?gz$', archive)):
@@ -86,8 +90,7 @@ def prepare_tarball_and_patches():
                     "| %(compression)s > %(tarball)s" % locals(),
                     shell=True)
             except UnknownFormat :
-                print "Can't determine format of tarball %s" % tarball
-                sys.exit(1)
+                fail("Can't determine format of tarball %s", tarball)
 
         elif (vcs == "pristine-tar"):
             # pristine-tar:<tarball>:<tag1>:<tag2>
