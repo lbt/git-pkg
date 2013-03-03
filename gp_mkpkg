@@ -14,6 +14,7 @@
 import re
 import subprocess
 import argparse
+import sys
 
 pkg_branch="pkg-mer"
 
@@ -38,7 +39,7 @@ def checkout_packaging_branch(pkg, force):
 
     if (not force and branch != pkg):
         print "Must be on the %s branch to use --no-checkout" % pkg
-        system.exit(1)
+        sys.exit(1)
 
 def guess_format(archive):
     if (re.search(r'\.t(ar\.)?gz$', archive)):
@@ -86,7 +87,7 @@ def prepare_tarball_and_patches():
                     shell=True)
             except UnknownFormat :
                 print "Can't determine format of tarball %s" % tarball
-                system.exit(1)
+                sys.exit(1)
 
         elif (vcs == "pristine-tar"):
             # pristine-tar:<tarball>:<tag1>:<tag2>
