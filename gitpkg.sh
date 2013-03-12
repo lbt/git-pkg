@@ -95,13 +95,13 @@ if [ -d .git ]; then
     git fetch --all
     git fetch --tags
 else
-    git clone $URL .
+    git clone -n $URL .
 fi
 /usr/lib/obs/service/gp_mkpkg $TAG
 
 if [ ! -z "$OUTDIR" ]; then
     # Move all files to OUTDIR
-    mv $(find . -mindepth 1 -maxdepth 1 -not -name .git) $OUTDIR
+    find . -mindepth 1 -maxdepth 1 -not -name .git -print0 | xargs -0 -I files mv files $OUTDIR
 fi
 
 exit 0
