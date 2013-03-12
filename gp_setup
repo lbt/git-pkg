@@ -289,8 +289,10 @@ prepare_pkg_branch() {
     git checkout --orphan ${pkg_branch}
     git rm -q -rf .
 
-    # Remove stray files that may have crept in
-    rm -f *
+    # Remove stray files that may have crept in but only if we're in a .git repo
+    if [[ -d .git ]] ; then
+	find . -mindepth 1 -maxdepth 1 -not -name .git -print0 | xargs -0 rm -rf
+    fi
 
     # We typically expect to be used in OBS/osc projects
     echo .osc > .gitignore
