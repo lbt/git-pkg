@@ -84,7 +84,16 @@ case $SVC in
 esac
 
 PRJDIR=$(pwd)
-cd $STORE
+cd $STORE 2>/dev/null
+
+# If $STORE does not exist, create a sensible directory. This makes
+# sense in local service runs.
+if [ $? -ne 0 ]; then
+    echo "Note: $STORE path not found. Creating a local gitpkg directory."
+    TMPSTORE=./gitpkg.tmp
+    mkdir -p $TMPSTORE
+    cd $TMPSTORE
+fi
 
 mkdir -p $SVC/$REPO
 cd $SVC/$REPO
