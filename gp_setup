@@ -76,6 +76,16 @@ unpack_tarball() {
 }
 
 usage_existing() {
+get_verrel_from_packaging() {
+    # See if there's a yaml or a .spec
+    vrfile=$(cd $pkgdir; find . -maxdepth 1 -name '*yaml' -print -quit)
+    vrfile=${vrfile:-$(cd $pkgdir; find . -maxdepth 1 -name '*spec' -print -quit)}
+    if [[ -f $pkgdir/$vrfile ]]; then
+	ver=$(grep Version: $pkgdir/$vrfile | cut -f2 -d: | tr -d ' ')
+	rel=$(grep Release: $pkgdir/$vrfile | cut -f2 -d: | tr -d ' ')
+    fi
+}
+
 cat <<EOF
     --existing [--pristine] --base-on=<tag>|--unpack=<tag>
                 --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
