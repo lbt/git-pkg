@@ -16,11 +16,24 @@ import os
 import subprocess
 import argparse
 import sys
+import collections
+import yaml
+import BlockDumper
 
-pkg_branch="pkg-mer"
+# Should come from ~/.vendor and/or commandline option
+vendor="mer"
+pkg_branch="pkg-%s" % vendor
 
 # Allow overriding of "git' command via the "GIT" environment variable
 GIT_CMD = os.environ.get('GIT', 'git')
+
+
+# Data passing class
+class Patches():
+    def __init__(self):
+        self.spec_Patches=[]
+        self.spec_patches=[]
+        self.yaml_Patches=[]
 
 class UnknownFormat(Exception):
     pass
@@ -64,7 +77,9 @@ def count_commits(a, b):
     return len(git('rev-list', '..'.join((a, b))).splitlines())
 
 
-def prepare_tarball_and_patches():
+def prepare_tarball_and_patches(args):
+    p = Patches()
+
     src_f = open("_src")
 
     for src in src_f:
@@ -86,16 +101,17 @@ def prepare_tarball_and_patches():
             if len(src) > 3:
                 tag2 = src[3]
 
-            # Determine archive/compression
-            try:
-                format, compression = guess_format(tarball)
-                # Make a suitable tarball
-                subprocess.call(
-                    GIT_CMD + " archive --format=%(format)s --prefix=src/ %(tag1)s "
-                    "| %(compression)s > %(tarball)s" % locals(),
-                    shell=True)
-            except UnknownFormat :
-                fail("Can't determine format of tarball %s", tarball)
+            if args.make_tarball:
+                # Determine archive/compression
+                try:
+                    format, compression = guess_format(tarball)
+                    # Make a suitable tarball
+                    subprocess.call(
+                        GIT_CMD + " archive --format=%(format)s --prefix=src/ %(tag1)s "
+                        "| %(compression)s > %(tarball)s" % locals(),
+                        shell=True)
+                except UnknownFormat :
+                    fail("Can't determine format of tarball %s", tarball)
 
         elif (vcs == "pristine-tar"):
             # pristine-tar:<tarball>:<tag1>:<tag2>
@@ -113,10 +129,10 @@ def prepare_tarball_and_patches():
             # Skip the first commit using commit~N terminology
             tag1 = "%s~%d" %(tag2, count_commits(tag1, tag2) - 1)
 
-            subprocess.call(
-                [ "/usr/bin/pristine-tar", "checkout", tarball],
-                shell=False)
-    #        raise Exception("Pristine tar not done yet")
+            if args.make_tarball:
+                subprocess.call(
+                    [ "/usr/bin/pristine-tar", "checkout", tarball],
+                    shell=False)
 
         else:
             raise Exception("_src storage %s not recognised" % vcs)
@@ -127,34 +143,140 @@ def prepare_tarball_and_patches():
             patches = git('format-patch', '-M', '--binary', '--no-renames',
                     '-N', '--no-numbered', '..'.join((tag1, tag2))).splitlines()
 
-            print "Patch source entries and %patch entries for .spec file\n"
             count = 1
             for patch in patches:
-                print "Patch%(count)d: %(patch)s" % locals()
+                p.spec_Patches.append("Patch%(count)d:\t%(patch)s\n" % locals())
                 count+=1
+                if not args.make_tarball:
+                    os.remove(patch)
 
-            print
             count = 1
             for patch in patches:
-                print "%%patch%(count)d -p1" % locals()
+                p.spec_patches.append("%%patch%(count)d -p1\n" % locals())
                 count+=1
 
-            print "\nPatches entries for Spectacle .yaml file\n"
-            print "Patches:"
+            # p.yaml_Patches.append("Patches:\n")
             for patch in patches:
-                print "- %(patch)s" % locals()
+                #p.yaml_Patches.append("- %(patch)s\n" % locals())
+                p.yaml_Patches.append(patch)
+
         else:
             print "No patches requested"
 
+    return p
+
+def apply_patches_to_spec(args, p, specfilename):
+
+    spec_f = open(specfilename, "r+")
+    spec_new = []
+
+    Source_match = re.compile(r"^Source")
+    Patch_match = re.compile(r"^Patch")
+    prep_match = re.compile(r"^%prep")
+    patch_match = re.compile(r"^%patch")
+
+    # Skip to the SourceXX: line
+    line = "python has no do: while syntax"
+    while line:
+        line = spec_f.readline()
+        if not Patch_match.search(line):
+            spec_new.extend(line)
+        if not Source_match.search(line):
+            continue
+        break
+
+    # Now print all Source lines but not Patch lines
+    while line:
+        line = spec_f.readline()
+        if Patch_match.search(line):
+            continue
+        if Source_match.search(line):
+            spec_new.extend(line)
+            continue
+        next_line = line
+        break
+
+    spec_new.extend(p.spec_Patches)
+    spec_new.extend(next_line)
+
+    # Skip to %prep
+    while line:
+        line = spec_f.readline()
+        if not Patch_match.search(line):
+            spec_new.extend(line)
+        if prep_match.search(line):
+            break
+
+    # Maybe found a %setup
+    maybe_setup = spec_f.readline()
+
+    if not re.search(r'^%setup',maybe_setup):
+        print "WARNING: No %setup following %prep - %patch macros are almost certainly wrong\n"
+    elif args.setup_src:
+        print "Adjusting %setup since git-pkg unpacks to src/\n"
+        spec_new.extend("# Adjusting %%setup since git-pkg unpacks to src/\n")
+        maybe_setup = re.sub(r'-n [^ ]*$', '-n src\n', maybe_setup)
+
+    # Output the (hopefully %setup) line and all %patch lines
+    spec_new.extend(maybe_setup)
+    spec_new.extend(p.spec_patches)
+
+    # Any remaining spec content, skipping %patch lines
+    while line:
+        line = spec_f.readline()
+        if not patch_match.search(line):
+            spec_new.extend(line)
+
+    spec_f.seek(0)
+    spec_f.writelines(spec_new)
+    spec_f.close()
+
+def apply_patches_to_yaml(args, p, yamlfilename):
+
+    f = open(yamlfilename, "r+")
+    specify = yaml.load(f)
+
+    specify['Patches'] = p.yaml_Patches
+    f.seek(0)
+    f.truncate()
+    yaml.dump(specify, f, Dumper=BlockDumper.BlockDumper, default_flow_style=False)
+    f.close()
+
+def apply_patches(args, p):
+    ""
+    for f in os.listdir("."):
+        if f.endswith(".yaml"):
+            apply_patches_to_yaml(args, p, f)
+            # Could run specify here - fn name would change
+            return
+        if f.endswith(".spec"):
+            spec = f
+    # No yaml found, patch the spec
+    apply_patches_to_spec(args, p, spec)
+
+
 parser = argparse.ArgumentParser(description='gitpkg build preparation')
+
 parser.add_argument('-n', '--no-checkout',
                     dest='force_checkout', action='store_false',
                     help="Don't force checkout the latest pkg branch (useful if working on packaging)")
+
+parser.add_argument('--no-src',
+                    dest='setup_src', action='store_false',
+                    help="Don't modify %setup to use -n src/ (useful ")
+
+parser.add_argument('--no-tarball',
+                    dest='make_tarball', action='store_false',
+                    help="Don't create the tarball/patches")
+
 parser.add_argument('tag', metavar='tag', type=str, nargs='?',
                     default=pkg_branch,
                     help='A tag to force checkout')
+
 args = parser.parse_args()
 
 # Checkout the tag (default is the hardcoded pkg_branch)
 checkout_packaging_branch(args.tag, args.force_checkout)
-prepare_tarball_and_patches()
+patches=prepare_tarball_and_patches(args)
+apply_patches(args, patches)
+#
