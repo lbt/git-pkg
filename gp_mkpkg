@@ -237,6 +237,8 @@ def apply_patches_to_yaml(args, p, yamlfilename):
     specify = yaml.load(f)
 
     specify['Patches'] = p.yaml_Patches
+    if args.setup_src:
+        specify['SetupOptions'] = '-q -n src'
     f.seek(0)
     f.truncate()
     yaml.dump(specify, f, Dumper=BlockDumper.BlockDumper, default_flow_style=False)
@@ -265,7 +267,7 @@ parser.add_argument('-n', '--no-checkout',
 
 parser.add_argument('--no-src',
                     dest='setup_src', action='store_false',
-                    help="Don't modify %setup to use -n src/ (useful ")
+                    help="Don't modify %setup to use -n src/ (useful for pristine tar")
 
 parser.add_argument('--no-tarball',
                     dest='make_tarball', action='store_false',
