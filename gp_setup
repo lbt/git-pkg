@@ -9,7 +9,8 @@
 # Create mer-pkg
 # Add templates
 
-pkg_branch=pkg-mer
+DISTRO=mer
+pkg_branch=pkg-$DISTRO
 
 [[ -d .git ]] || {
     echo "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
@@ -18,38 +19,30 @@ pkg_branch=pkg-mer
 
 usage() {
     cat <<EOF
-    gp_setup --pkg[=branch]
-    gp_setup --existing [--pristine] --base=<tag>|--unpack=<tag> --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
+    gp_setup --pkg [--distro=<DISTRO>]
+    gp_setup --existing --base-on=<tag>|--unpack=<tag> \
+             --pkgdir=<packaging dir> \
+             [--patch-branch=<branch/tag>]  [--pristine] \
+             [--distro=<DISTRO>]
  
        Used to setup an existing git repo for git-pkg
 
-    --existing [--pristine] --base=<tag>|--unpack=<tag>
-                --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
-       Takes an existing set of packaging and applies it to some git repo.
-       --base : Uses an existing/ upstream git at the given tag
-       --unpack : Uses an empty git in conjuntion with --pristine;
-                  unpacks the tarball as an initial comit and applies
-                  the given tag to the unpacked tarball
-       --pkgdir=<packaging dir> is the source of the spec/yaml/changes/patches
-       --patch-branch=<patch-tag> is the id which will be used for the
-         branch for the patches
-
-       If --pristine is used then it looks in <packaging dir> for a
-       tarball and uses that as the basis for the build.
-       
-    --pkg[=branch]
-       Used in an existing git repo this creates a pkg branch with
-       a suitable .gitignore and a _src file
-       By default pkg-mer is created but alternatives can be used (eg pkg-suse11.4)
+       $DISTRO is set either in ~/.gitpkg, the GITPKG_DISTRO
+       environment variable or using --distro=<DISTRO>. If not
+       specified 'mer' is used.
 
 EOF
+    # keep the usage msg near the code:
+    usage_pkg
+    usage_existing
 }
+
 count_commits() {
     git rev-list $1..$2 | wc -l
 }
 
 # http://stackoverflow.com/a/3879077/337649
-require_clean_work_tree () {
+require_clean_work_tree() {
     # Update the index
     git update-index -q --ignore-submodules --refresh
     err=0
@@ -82,39 +75,83 @@ unpack_tarball() {
     tar --transform 's_[^/]*/__' -xf $1
 }
 
+usage_existing() {
+cat <<EOF
+    --existing [--pristine] --base-on=<tag>|--unpack=<tag>
+                --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
+               [--ver=<ver>[-<rel>]]
+
+       Takes an existing set of packaging and applies it to some git repo.
+       This can be used in 3 ways:
+         1) with an upstream git and some packaging/patches
+         2) with an upstream tarball and some packaging/patches
+         3) with an upstream git, an upstream tarball and some packaging/patches
+            (eg where upstream does some post-processing after a git
+            checkout)
+
+       --base-on=<basetag>
+                   The existing tag to base the packaging on.
+                   Typically the upstream release tag.
+
+                   If --pristine is used then it looks in <packaging
+                   dir> for a tarball and uses that as the basis for
+                   the build.
+
+       --unpack-to=<basetag>
+                  Uses an empty git (implies --pristine); looks in
+                  <packaging dir> for a tarball and uses that as the
+                  basis for the build.  Unpacks the tarball as an
+                  initial commit and applies the given tag to the
+                  unpacked tarball
+
+       --ver=<ver>[-<rel>]
+                  If the upstream <basetag> is not the X.Y.Z version
+                  then specify the version and optionally the release.
+                  (Could come from spec/.changes?)
+
+       --pkgdir=<packaging dir>
+                  is the source dir for the spec/yaml/changes/patches
+                  This could be a 'checked out' osc dir.
+                  Any patches found in pkgdir are applied at <tag>
+EOF
+}
+
 use_existing() {
 
     gp_type="git"
     unpack=
     FUZZ="--fuzz=2"
     # better option parsing welcomed
-    # gp_setup --existing [--pristine] --base=<tag>|--unpack=<tag> --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
 
     while [[ $1 ]]; do
 	case $1 in
-	    --pristine* )
+	    --pristine )
 		gp_type="pristine-tar"
 		shift ;;
-	    --base* )
-		tag=${1#*=}
+	    --base-on* )
+		basetag=${1#*=}
 		# if tag is empty, complain
 		shift ;;
-	    --unpack=* )
+	    --unpack-to=* )
 		# Would be nice to default to tag=version
 		unpack=true
-		tag=${1#*=}
+		basetag=${1#*=}
 		shift ;;
 	    --pkgdir=* )
 		pkgdir=${1#*=}
-		echo "Looking in $pkgdir"
 		shift ;;
-	    --patch* )
+	    --ver=* )
 		# Would be nice to default to tag=version-1
-		pbranch=${1#*=}
+		verrel=${1#*=}
+		force_rel=${verrel##*-}
+		force_ver=${verrel%-*}
 		shift ;;
 	    --fuzz=* )
 		# patch application fuzz
 		FUZZ="--fuzz=${1#*=}"
+		shift ;;
+	    --use-all-packaging )
+		USE_ALL_PKG=true
 		shift ;;
 	    * )
 		echo "Error $1 not recognised"
@@ -122,15 +159,25 @@ use_existing() {
 	esac
     done
 
-    [[ $tag ]] || { echo "tag not supplied"; exit 1; }
+    [[ $basetag ]] || { echo "tag not supplied"; exit 1; }
     [[ $pkgdir ]] || { echo "pkgdir not supplied"; exit 1; }
 
     [[ $gp_type == "pristine-tar" && ! $pbranch ]] && {
 	echo "Error: pristine-tar requires a --patch-branch value"; exit 1; }
 
-    # Somewhere to keep the patch info
-    stash=$(mktemp -d)
-    trap 'rm -rf "$stash"' EXIT
+    # Determine version/release numbers
+    #get_verrel_from_packaging($pkgdir)
+    rel=${rel:-$force_rel}
+    ver=${ver:-$force_ver}
+
+    src_tag=$DISTRO-${ver}
+    patches_tag=$DISTRO-${ver}-${rel}
+    pkg_tag=pkg-$DISTRO-${ver}-${rel}
+
+    [[ $gp_type == "pristine-tar" && ! $pbranch ]] && {
+	echo "Error: pristine-tar requires a --patch-branch value"; exit 1; }
+
+    pbranch="${DISTRO}-${ver}"
 
     if ! [[ -d .git ]]; then
 	echo "This is not a git repository"
@@ -152,6 +199,7 @@ use_existing() {
     # Guess the tarball
     tarball=$(cd $pkgdir; find * -name *t*gz)
     [[ ! $tarball ]] && tarball=$(cd $pkgdir; find * -name *t*bz2)
+    echo "tarball: $tarball"
 
     # If this is a pure pristine-tar with no git tree then just unpack
     # the tarball as a starting point
@@ -160,13 +208,15 @@ use_existing() {
 	unpack_tarball $pkgdir/$tarball	
 	git add .
 	git commit -m"Initial commit from $tarball"
-	# Create a tag for the tarball
-	git tag $tag
+	# Create a tag for the tarball - it's OK to do it now in unpack mode
+	git tag $basetag
     fi
 
     # Branch from the appropriate tag
-    git checkout -f $tag
-    if [[ $pbranch ]] ; then git checkout -b $pbranch; fi
+    git checkout  -q -f $basetag
+    src_tag_sha1=$(git show-ref -s HEAD) # Store this sha1 so we make tags later
+
+    [[ $pbranch ]] && git checkout -b $pbranch # Make a patches branch if we need to
 
     # Pristine tar approach needs some extra work
     # 1. Commit the tarball in packaging to pristine tar
@@ -174,8 +224,8 @@ use_existing() {
     # 3. Commit any deltas (empty if needed)
     # 4. Ready for patches
     if [[ $gp_type == "pristine-tar" ]] ; then
-	echo "Pristine tar : removing all files and unpacking tarball to record any delta to $tag"
-	pristine-tar commit $pkgdir/$tarball $tag
+	echo "Pristine tar : removing all files and unpacking tarball to record any delta to $basetag"
+	pristine-tar commit $pkgdir/$tarball $basetag
 	unpack_tarball $pkgdir/$tarball	
 	git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
 	git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
@@ -196,36 +246,23 @@ use_existing() {
 	have_patches=1
     done
 
+    # Only do this next section if we actually found patches to apply
     if [[ $have_patches ]] ; then
+	# We need to tag the patch branch head
+	patches_tag_sha1=$(git show-ref -s HEAD)
+
         # Pristine tar needs to skip the pristine-tar-delta patch
 	if [[ $gp_type == "pristine-tar" ]] ; then
-	    tag1="${pbranch}~$(($(count_commits $tag $pbranch ) - 1))"
+	    tag1="${pbranch}~$(($(count_commits $basetag $pbranch ) - 1))"
 	else
-	    tag1=$tag
+	    tag1=$src_tag
 	fi
 
-	# Create the patchset and record the output for parsing
-	git format-patch --find-renames --binary -N --no-numbered $tag1..$pbranch > $stash/patches
-	count=1
-	while read patch; do
-            echo "Patch$((count++)): $patch" >> $stash/spec-Patch
-	done < $stash/patches
-
-	count=1
-	while read patch; do
-            echo "%patch$((count++)) -p1"  >> $stash/spec-patch
-	done < $stash/patches
-
-	echo "Patches:" > $stash/spec-yaml
-	while read patch; do
-            echo " - $patch" >> $stash/spec-yaml
-	done < $stash/patches
-
-        # We now have all we need to create the _src file so stash that away
-	echo $gp_type:$tarball:$tag:$pbranch > $stash/_src
+        # We now have all we need to create the _src file
+	_src="$gp_type:$tarball:$src_tag:$patches_tag"
     else
 	# No patches variant of _src
-	echo $gp_type:$tarball:$tag > $stash/_src
+	_src="$gp_type:$tarball:$src_tag"
     fi
 
     prepare_pkg_branch --quiet
@@ -233,39 +270,39 @@ use_existing() {
     # Copy all the packaging files in (assuming no hidden files)
     cp $pkgdir/* .
     # Clean up the tarball we found and any patches which are now autogenerated
-    rm $tarball
-    rm -f *patch
+    # Allow --use-all-packaging to override complex cases
+    if [[ ! $USE_ALL_PKG ]] ; then
+	rm -f *t*gz *t*bz2
+	rm -f *patch
+	echo "cleaned up"
+	ls -laF
+    fi
 
-    # Provide patch information for yaml/spec 
+    # Provide patch information for yaml/spec
     if [[ -e $yamlfile ]]; then
-        # We need update_yaml_patches
-	[[ -e $stash/spec-yaml ]] && cat $stash/spec-yaml >> $yamlfile
 	if [[ $gp_type != "pristine-tar" ]] ; then
 	    echo "SetupOptions: -q -n src"  >> $yamlfile
 	fi
-	if [[ $have_patches ]] ; then
-	    echo "Please edit/move the Patches section at the end of $yamlfile in another window and then press return"
-	    read dummy
-	fi
-	# run spectacle and then edit .spec
+	gp_mkpkg --no-checkout --no-tarball
+
 	specify -N $yamlfile
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
-	    $gp_update_spec_patches < $specfile > $stash/$specfile
+	    gp_mkpkg -n --no-tarball  --no-src
 	else
-	    $gp_update_spec_patches --setup_src < $specfile > $stash/$specfile
+	    gp_mkpkg -n --no-tarball
 	fi
-	mv $stash/$specfile $specfile
     fi
 
     # Everything else is normal packaging
     git add * >/dev/null 2>&1
 
     # And finally a commit
-    git commit -m"Initial git package of $tag as $pbranch"
+    git commit -m"Initial git package of $basetag as $pbranch"
 
-    # Tidy up
-    rm -rf $stash
+    git tag $src_tag $src_tag_sha1
+    [[ $patches_tag_sha1 ]] && git tag $patches_tag $patches_tag_sha1
+    git tag $pkg_tag
 
     # Comment on what we've created
     echo Guessed 
@@ -274,6 +311,17 @@ use_existing() {
 
     # and a reminder not to bitch *too* much
     echo "gp_setup --existing isn't thoroughly tested - please fix and/or report any bugs you find"
+}
+
+usage_pkg(){
+cat <<EOF
+    --pkg
+          Used in an existing git repo this creates a pkg branch
+          called pkg-$DISTRO with a suitable .gitignore and a _src
+          file.
+          The user must then add packaging files.
+EOF
+
 }
 
 prepare_pkg_branch() {
@@ -296,11 +344,8 @@ prepare_pkg_branch() {
 
     # We typically expect to be used in OBS/osc projects
     echo .osc > .gitignore
-    if [[ -e $stash/_src ]]; then
-	cp $stash/_src _src
-    else
-	touch _src
-    fi
+    echo ${_src:-git:pkg.tar.bz2:srctag[:patchestag]} > _src
+
     git add _src .gitignore
 
     # If invoked internally then we 
@@ -329,5 +374,3 @@ case $1 in
     * )
 	usage ;;
 esac
-
-
