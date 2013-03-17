@@ -297,10 +297,10 @@ Find the upstream, clone and move the .git dir to the osc dir:
 What tag are we based on?
 
  git checkout -f v2.1.1
- gp_setup --pkg
+ gp_setup --manual
 
 At this point you are in the packaging branch
-In the future gp_setup --pkg=<tag> will do the git checkout <tag> next release
+In the future gp_setup --manual=<tag> will do the git checkout <tag> next release
 
 Edit yaml/spec/changes and create some packaging (we'll cheat and use philippe's):
 
