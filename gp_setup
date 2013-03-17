@@ -19,7 +19,8 @@ pkg_branch=pkg-$DISTRO
 
 usage() {
     cat <<EOF
-    gp_setup --pkg [--distro=<DISTRO>]
+    gp_setup --manual [--distro=<DISTRO>] \
+             [--pkgdir=<packaging dir>]
     gp_setup --existing --base-on=<tag>|--unpack=<tag> \
              --pkgdir=<packaging dir> \
              [--patch-branch=<branch/tag>]  [--pristine] \
@@ -75,7 +76,6 @@ unpack_tarball() {
     tar --transform 's_[^/]*/__' -xf $1
 }
 
-usage_existing() {
 get_verrel_from_packaging() {
     # See if there's a yaml or a .spec
     vrfile=$(cd $pkgdir; find . -maxdepth 1 -name '*yaml' -print -quit)
@@ -83,13 +83,15 @@ get_verrel_from_packaging() {
     if [[ -f $pkgdir/$vrfile ]]; then
 	ver=$(grep Version: $pkgdir/$vrfile | cut -f2 -d: | tr -d ' ')
 	rel=$(grep Release: $pkgdir/$vrfile | cut -f2 -d: | tr -d ' ')
+	echo "Found Version/Release: $ver-$rel in the packaging"
     fi
 }
 
+usage_existing() {
 cat <<EOF
-    --existing [--pristine] --base-on=<tag>|--unpack=<tag>
-                --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
-               [--ver=<ver>[-<rel>]]
+    --auto [--pristine] --base-on=<tag>|--unpack=<tag>
+           --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
+           [--ver=<ver>[-<rel>]]
 
        Takes an existing set of packaging and applies it to some git repo.
        This can be used in 3 ways:
@@ -176,7 +178,7 @@ use_existing() {
 	echo "Error: pristine-tar requires a --patch-branch value"; exit 1; }
 
     # Determine version/release numbers
-    #get_verrel_from_packaging($pkgdir)
+    get_verrel_from_packaging $pkgdir
     rel=${rel:-$force_rel}
     ver=${ver:-$force_ver}
 
@@ -275,7 +277,7 @@ use_existing() {
 	_src="$gp_type:$tarball:$src_tag"
     fi
 
-    prepare_pkg_branch --quiet
+    prepare_pkg_branch
 
     # Copy all the packaging files in (assuming no hidden files)
     cp $pkgdir/* .
@@ -325,13 +327,114 @@ use_existing() {
 
 usage_pkg(){
 cat <<EOF
-    --pkg
-          Used in an existing git repo this creates a pkg branch
-          called pkg-$DISTRO with a suitable .gitignore and a _src
-          file.
-          The user must then add packaging files.
-EOF
 
+   The --manual mode is used for 'manual' setup.
+
+   This gives a chance to modify the packaging before doing a commit.
+
+    --manual
+       Used in an existing git repo this creates a pkg branch
+       called pkg-$DISTRO with a suitable .gitignore and a _src
+       file.
+       The user must then add packaging files to this branch and
+       manually create tags.
+
+       [--pkgdir=<packaging dir>]
+          If provided then any files in this source dir are copied
+          into the current dir ready for adding to the packaging
+          branch.
+
+          This could be a 'checked out' osc dir.
+
+          Also tries to find the Version:/Release: information from
+          any yaml/spec
+
+
+       [--ver=<ver>-<rel>]
+          Allow version and release to be overriden
+
+EOF
+}
+do_pkg() {
+    verrel_regex="^[^-]+-[^-]+$"
+    pkgdir=
+    while [[ $1 ]]; do
+	case $1 in
+	    --pkgdir=* )
+		pkgdir=${1#*=}
+		shift ;;
+	    --ver=* )
+		verrel=${1#*=}
+		if [[ $verrel =~ $verrel_regex ]]; then
+		    ver=${verrel%-*}
+		    rel=${verrel##*-}
+		else
+		    echo "The --ver= option must provide <ver>-<rel>"
+		    exit 1
+		fi
+		shift ;;
+	    * )
+		echo "Error $1 not recognised"
+		exit 1;;
+	esac
+    done
+
+    if ! [[ ${verrel} ]] && [[ $pkgdir ]]; then
+	get_verrel_from_packaging $pkgdir
+    fi
+
+    # If all goes well we'll tag current location
+    ver_tag_sha1=$(git show-ref -s HEAD)
+    
+    prepare_pkg_branch
+
+    if [[ $pkgdir ]]; then
+	cp $pkgdir/* .
+	tarball=$(find * -name '*t*bz2' -o -name '*t*gz')
+    fi
+    tarball=${tarball:-name-version.tar.bz2}
+
+
+    cat <<EOF
+Now on ${pkg_branch} branch with _src and .gitignore.
+
+You should create suitable packaging on this branch.
+
+See https://wiki.merproject.org/wiki/Git_pkg for more help.
+
+These files are present:
+$(ls -laF)
+
+you may want to:
+
+rm $tarball
+EOF
+if [[ $ver ]] && [[ $rel ]]; then
+    echo "echo git:$tarball:mer-$ver > _src"
+else
+    echo "echo git:$tarball:mer-\$ver > _src   using a reasonable value for \$ver"
+fi
+cat <<EOF
+
+If you modify _src and have any patches to apply you may want to run:
+
+gp_mkpkg -n --no-tarball
+
+git add *
+git commit -am"Initial packaging commit"
+EOF
+if [[ $ver ]] && [[ $rel ]]; then
+    echo "git tag pkg-$DISTRO-$ver-$rel"
+fi
+if ! git show-ref --verify --quiet refs/tags/mer-$ver; then
+    cat <<EOF
+
+Tag mer-$ver does not exist: you may want to create it.
+To create it at the commit you were on originally:
+
+git tag mer-$ver $ver_tag_sha1
+EOF
+fi
 }
 
 prepare_pkg_branch() {
@@ -358,28 +461,16 @@ prepare_pkg_branch() {
 
     git add _src .gitignore
 
-    # If invoked internally then we 
-    [[ $1 == "--quiet" ]] && return
-
-    cat <<EOF
-Now on ${pkg_branch} branch with _src and .gitignore.
-
-You should create suitable packaging on this branch.
-
-See https://wiki.merproject.org/wiki/Git_pkg for more help.
-
-EOF
-
 }
 
 case $1 in
-    --existing )
+    --auto )
 	shift
-	use_existing $* ;;
+	use_existing "$@" ;;
 
-    --pkg* )
-	tag=${1#*=}
-	prepare_pkg_branch ;;
+    --manual )
+	shift
+	do_pkg "$@" ;;
 
     * )
 	usage ;;
