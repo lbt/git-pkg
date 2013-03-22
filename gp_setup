@@ -226,7 +226,7 @@ use_existing() {
 
     # Branch from the appropriate tag
     git checkout  -q -f $basetag
-    src_tag_sha1=$(git show-ref -s HEAD) # Store this sha1 so we make tags later
+    src_tag_sha1=$(git rev-parse HEAD) # Store this sha1 so we make tags later
 
     [[ $pbranch ]] && git checkout -b $pbranch # Make a patches branch if we need to
 
@@ -261,7 +261,7 @@ use_existing() {
     # Only do this next section if we actually found patches to apply
     if [[ $have_patches ]] ; then
 	# We need to tag the patch branch head
-	patches_tag_sha1=$(git show-ref -s HEAD)
+	patches_tag_sha1=$(git rev-parse HEAD)
 
         # Pristine tar needs to skip the pristine-tar-delta patch
 	if [[ $gp_type == "pristine-tar" ]] ; then
@@ -384,7 +384,7 @@ do_pkg() {
     fi
 
     # If all goes well we'll tag current location
-    ver_tag_sha1=$(git show-ref -s HEAD)
+    ver_tag_sha1=$(git rev-parse HEAD)
     
     prepare_pkg_branch
 
