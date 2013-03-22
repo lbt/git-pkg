@@ -1,0 +1,185 @@
+#!/bin/bash
+
+# gp_release
+# This is part of the Mer git-packaging suite
+
+DISTRO=mer
+pkg_branch=pkg-$DISTRO
+
+ME=$(basename $0)
+
+[[ -d .git ]] || {
+    echo "This is not a git repository; use $ME in a gitpkg git repo".
+    exit 1
+}
+
+# http://stackoverflow.com/a/3879077/337649
+require_clean_work_tree() {
+    # Update the index
+    git update-index -q --ignore-submodules --refresh
+    err=0
+
+    # Disallow unstaged changes in the working tree
+    if ! git diff-files --quiet --ignore-submodules --
+    then
+        echo >&2 "cannot $1: you have unstaged changes."
+        git diff-files --name-status -r --ignore-submodules -- >&2
+        err=1
+    fi
+
+    # Disallow uncommitted changes in the index
+    if ! git diff-index --cached --quiet HEAD --ignore-submodules --
+    then
+        echo >&2 "cannot $1: your index contains uncommitted changes."
+        git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
+        err=1
+    fi
+
+    if [ $err = 1 ]
+    then
+        echo >&2 "Please commit or stash them before using gp_setup."
+        exit 1
+    fi
+}
+
+switch_to_pkg(){
+    git checkout pkg-$DISTRO || { echo "Can't checkout pkg-$DISTRO, aborting"; exit 1; }
+}
+
+update_changes(){ # release oldpatchtag patchtag
+    release=$1
+    tag1=$2
+    tag2=$3
+    changes=$(find . -maxdepth 1 -name '*changes' -print -quit)
+    newchanges=$(mktemp changes_XXXXX)
+    date +"* %a %b %Y ${GIT_AUTHOR_NAME:-Your Name (Set \$GIT_AUTHOR_NAME)} <${GIT_AUTHOR_EMAIL:-Your Email Set \$GIT_AUTHOR_EMAIL}> - $release" > $newchanges
+    cat <<EOF >> $newchanges
+- Please enter a changelog message
+
+#### Relevant gitlog. This line and lines up to the next changelog entry will be removed.
+EOF
+    git log $tag1..$tag2  >> $newchanges
+    echo "#### this line will be removed" >> $newchanges
+    cat *.changes >> $newchanges
+    $EDITOR $newchanges
+    sed -i '/^### Relevant gitlog/,/^### this line will/d' $newchanges
+    mv $newchanges $changes || exit 1
+}
+
+usage() {
+    cat <<EOF
+    $ME [--ver=<version-release>] [--edit]
+ 
+       Used to create a new release or prepare for an intermediate
+       build
+
+       --ver=<version-release>
+
+         if --ver is used to provide <version-release> then a new
+         package version will be created.  Updates to _src, .changes,
+         .yaml and .spec files are made. Version: / Release: values
+         and Patches: lines will be updated in the yaml/spec. A
+         changelog entry is prompted for (using git log as a base) and
+         the git repo will be tagged.
+
+         HEAD when the command is run will be tagged as
+         $DISTRO-<version-release> and packaging as
+         pkg-$DISTRO-<version-release>. (Usually git checkout -f
+         master would be run before running $ME
+
+       If --ver is not given then the packaging branch pkg-$DISTRO is
+       checked out, the spec/yaml is updated by appending
+       .gitcount.sha1 to the Release: value (this tries to ensure rpm
+       release values increment in a manner that allow rpm upgrades to
+       work)
+
+       $DISTRO is set either in ~/.gitpkg, the GITPKG_DISTRO
+       environment variable or using --distro=<DISTRO>. If not
+       specified 'mer' is used.
+
+EOF
+}
+
+do_release() {
+    verrel_regex="^[^-]+-[^-]+$"
+    #  or  "^[a-zA-Z0-9.~_]+-[a-zA-Z0-9.~_]+$" ?
+
+    while [[ $1 ]]; do
+	case $1 in
+	    --ver* )
+		verrel=${1#*=}
+		if [[ $verrel =~ $verrel_regex ]]; then
+		    ver=${verrel%-*}
+		    rel=${verrel##*-}
+		else
+		    echo "The --ver= option must provide <ver>-<rel>"
+		    exit 1
+		fi
+		shift ;;
+	    * )
+		echo "Error $1 not recognised"
+		usage
+		exit 1;;
+	esac
+    done
+
+    require_clean_work_tree
+
+    # store current git postion
+    patchtag_sha1=$(git rev-parse HEAD)
+
+    switch_to_pkg
+
+    # Update _src
+    IFS=: read type tarball basetag oldpatchtag rest < _src
+
+    if [[ $verrel ]]; then
+	patchtag=${DISTRO}-$verrel
+    else
+	patchtag=$patchtag_sha1
+    fi
+    echo ${type}:${tarball}:${basetag}:${patchtag} > _src
+
+    # Update the yaml or spec (or abort)
+    pkgfile=$(find . -maxdepth 1 -name '*yaml' -print -quit)
+    if [[ ! $pkgfile ]]; then
+	pkgfile=$(find . -maxdepth 1 -name '*spec' -print -quit)
+    fi
+    if [[ ! $pkgfile ]]; then
+	print "No spec or yaml files found"
+	exit 1
+    fi
+
+    if [[ $verrel ]]; then
+	sed -i -e"s/Version:.*/Version: $ver/" $pkgfile
+	sed -i -e"s/Release:.*/Release: $rel/" $pkgfile
+	update_changes $verrel $oldpatchtag $patchtag_sha1
+        # We need to tag source before running gp_mkpkg
+	git tag $patchtag $patchtag_sha1
+
+        # All done, use gp_mkpkg to update patch lists in yaml/spec etc
+	gp_mkpkg --no-tarball --no-checkout
+
+        # and commit
+	git commit -am"Release $patchtag"
+	git tag pkg-$patchtag
+    else
+	sha1=$(git rev-parse --short $patchtag_sha1)
+	gitcount=$(git rev-list ${basetag}..${patchtag} | wc -l)
+	sed -i -re"s/Release:\s*(\S*)/Release: \1.$gitcount.$sha1/" $pkgfile
+	# Now add a dummy changelog entry
+	changes=$(find . -maxdepth 1 -name '*changes' -print -quit)
+	newchanges=$(mktemp changes_XXXXX)
+	date +"* %a %b %Y ${GIT_AUTHOR_NAME:-Your Name (Set \$GIT_AUTHOR_NAME)} <${GIT_AUTHOR_EMAIL:-Your Email Set \$GIT_AUTHOR_EMAIL}> - $release" > $newchanges
+	echo -e "- git commits from $oldpatchtag to $sha1" >> $newchanges
+	git log ${oldpatchtag}..$patchtag_sha1 --oneline | sed -e 's/^/   /' >> $newchanges
+	echo >> $newchanges
+	cat *.changes >> $newchanges
+	mv $newchanges $changes || exit 1
+
+        # All done, use gp_mkpkg to update patch lists in yaml/spec etc
+	gp_mkpkg --no-checkout
+    fi
+}
+
+do_release $*
