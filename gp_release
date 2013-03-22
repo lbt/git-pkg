@@ -87,11 +87,19 @@ usage() {
          pkg-$DISTRO-<version-release>. (Usually git checkout -f
          master would be run before running $ME
 
+       --edit
+
+         If --edit is provided then the final commit/tag step on the
+         packaging branch is not made so that the spec/yaml can be
+         edited manually. The commit/tag commands are printed for
+         reference.
+
        If --ver is not given then the packaging branch pkg-$DISTRO is
        checked out, the spec/yaml is updated by appending
        .gitcount.sha1 to the Release: value (this tries to ensure rpm
        release values increment in a manner that allow rpm upgrades to
        work)
+
 
        $DISTRO is set either in ~/.gitpkg, the GITPKG_DISTRO
        environment variable or using --distro=<DISTRO>. If not
@@ -115,6 +123,9 @@ do_release() {
 		    echo "The --ver= option must provide <ver>-<rel>"
 		    exit 1
 		fi
+		shift ;;
+	    --edit )
+		manual_edit=true
 		shift ;;
 	    * )
 		echo "Error $1 not recognised"
@@ -161,8 +172,22 @@ do_release() {
 	gp_mkpkg --no-tarball --no-checkout
 
         # and commit
-	git commit -am"Release $patchtag"
-	git tag pkg-$patchtag
+	if [[ $manual_edit ]]; then
+	    git add -u .
+	    cat <<EOF
+
+The packaging has been prepared. You may now manally edit the
+packaging.
+
+When you are done, commit and tag the changes:
+
+git commit -am"Release $patchtag"
+git tag pkg-$patchtag
+EOF
+	else
+	    git commit -am"Release $patchtag"
+	    git tag pkg-$patchtag
+	fi
     else
 	sha1=$(git rev-parse --short $patchtag_sha1)
 	gitcount=$(git rev-list ${basetag}..${patchtag} | wc -l)
@@ -179,6 +204,10 @@ do_release() {
 
         # All done, use gp_mkpkg to update patch lists in yaml/spec etc
 	gp_mkpkg --no-checkout
+
+	cat <<EOF
+The tarball and patches have been prepared for building.
+EOF
     fi
 }
 
