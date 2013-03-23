@@ -244,7 +244,8 @@ def apply_patches_to_yaml(args, p, yamlfilename):
     yaml.dump(specify, f, Dumper=BlockDumper.BlockDumper, default_flow_style=False)
     f.close()
 
-    subprocess.check_output('specify')    
+    print "Running specify"
+    subprocess.check_output('specify')
 
 def apply_patches(args, p):
     ""
