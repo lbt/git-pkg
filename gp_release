@@ -20,6 +20,9 @@ EOF
     fi
 }
 
+git_tag_exists() { git show-ref --tags --quiet --verify -- "refs/tags/$1"; }
+git_branch_exists() { git show-ref --quiet --verify -- "refs/heads/$1"; }
+
 switch_to_pkg(){
     git checkout -f pkg-$DISTRO || { echo "Can't checkout pkg-$DISTRO, aborting"; exit 1; }
 }
@@ -52,7 +55,7 @@ EOF
 
 usage() {
     cat <<EOF
-    $ME [--ver=<version-release>] [--edit]
+    $ME [--ver[=<version-release>]] [--base=<tag>] [--edit]
  
        Used to create a new release or prepare for an intermediate
        build
@@ -73,6 +76,14 @@ usage() {
          $DISTRO-<version-release> and packaging as
          pkg-$DISTRO-<version-release>. (Usually git checkout -f
          master would be run before running $ME
+
+       --base=<tag>
+
+         If --base is provided then it is used as the new base tag
+         from which patches are based. If --ver=<version>-<release> is
+         not given then <version> is assumed to be <tag> and <release>
+         is assumed to be "1". A $DISTRO-<version> branch will be made
+         if not present.
 
        --edit
 
@@ -108,8 +119,21 @@ do_release() {
 
     while [[ $1 ]]; do
 	case $1 in
+	    --base=*)
+		newbase=${1#*=}
+		if not git_tag_exists $newbase; then
+		    echo "--base must provide a valid tag. '$newbase' is not a valid tag."
+		    exit 1
+		fi
+		# if a plain --ver is given aswell (ie without
+		# =ver-rel) that's ambiguous since --base implies a
+		# new version
+		# so override to 'basetag' and we'll set ver=$newbase and rel=1
+		get_verrel=newbase
+		shift;;
 	    --ver )
-		get_verrel=yes
+		# Now if --base was given, don't override from packaging
+		get_verrel=${get_verrel:-packaging}
 		shift;;
 	    --ver=* )
 		verrel=${1#*=}
@@ -167,18 +191,27 @@ do_release() {
     switch_to_pkg
 
     # Get ver-rel and increment it if we need to
-    if [[ $get_verrel ]]; then
-	get_verrel_from_packaging .
-	oldrel=$rel
-	rel=$(perl -e"\$r='$rel';print ++\$r;")
-	echo "Automagically guessed $ver-$oldrel -> $ver-$rel"
-	verrel=$ver-$rel
-	if ! [[ $rel ]] || [[ $rel == "1" ]]; then
-	    echo "The value guessed for Release: is '$rel' and this is probably wrong. Please specify an exact value for --ver="
-	    echo "Currently Version: $ver and Release: $oldrel"
-	    exit 1
-	fi
-    fi
+    case $get_verrel in
+	packaging )
+	    get_verrel_from_packaging .
+	    oldrel=$rel
+	    rel=$(perl -e"\$r='$rel';print ++\$r;")
+	    echo "Automagically guessed $ver-$oldrel -> $ver-$rel"
+	    verrel=$ver-$rel
+	    if ! [[ $rel ]] || [[ $rel == "1" ]]; then
+		echo "The value guessed for Release: is '$rel' and this is probably wrong. Please specify an exact value for --ver="
+		echo "Currently Version: $ver and Release: $oldrel"
+		exit 1
+	    fi
+	    ;;
+	newbase )
+	    # if we have a newbase and no ver/rel then set them:
+	    if ! [[ $verrel ]]; then
+		ver=$newbase
+		rel=1
+	    fi
+	    ;;
+    esac
 
     # Update _src
     IFS=: read type tarball basetag oldpatchtag rest < _src
@@ -188,7 +221,23 @@ do_release() {
     else
 	patchtag=$patchtag_sha1
     fi
-    echo ${type}:${tarball}:${basetag}:${patchtag} > _src
+
+    # If we have a new basetag ...
+    if [[ $newbase ]]; then
+	basetag=$newbase
+	# There should be a mer-ver branch
+	if not git_branch_exists $DISTRO-$ver; then
+	    echo "Making a $DISTRO-$ver branch"
+	    git branch $DISTRO-$ver $patchtag
+	fi
+    fi
+
+    # if basetag and patchtag have the same sha1...
+    if [[ $(git rev-parse $basetag) == $(git rev-parse $patchtag) ]]; then
+	echo ${type}:${tarball}:${basetag} > _src
+    else
+	echo ${type}:${tarball}:${basetag}:${patchtag} > _src
+    fi
 
     # Update the yaml or spec (or abort)
     pkgfile=$(find . -maxdepth 1 -name '*yaml' -print -quit)
