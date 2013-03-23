@@ -1,13 +1,22 @@
+PYTHON ?= python
+SCRIPTS=gp_setup gp_release gp_mkpkg
+LIBS=gp_common
+BINDIR=${DESTDIR}/usr/bin
+SHAREDIR=${DESTDIR}/usr/share/gitpkg
+OBSDIR=${DESTDIR}/usr/lib/obs/service
 default:
 
 install:
-	mkdir -p ${DESTDIR}/usr/bin/
-	cp gp_* ${DESTDIR}/usr/bin/
+	install -d ${BINDIR}
+	install -d ${SHAREDIR}
+	install -m 755 ${SCRIPTS} ${BINDIR}/
+	install -m 755 ${LIBS} ${SHAREDIR}/
 
 	# install the OBS service files
-	mkdir -p ${DESTDIR}/usr/lib/obs/service/
-	cp gitpkg.sh ${DESTDIR}/usr/lib/obs/service/gitpkg
-	cp gitpkg.service ${DESTDIR}/usr/lib/obs/service/
-	# gitpkg expects to find gp_mkpkg here. When this is packaged
-	# into rpm, a symbolic link might be a better idea.
-	cp gp_mkpkg ${DESTDIR}/usr/lib/obs/service/
+	install -d ${OBSDIR}
+	install -m 755 gitpkg.sh ${OBSDIR}/gitpkg
+	install -m 755 gitpkg.service ${OBSDIR}
+	ln -s /usr/bin/gp_mkpkg ${OBSDIR}/
+
+	# python parts
+	$(PYTHON) setup.py install --root=${DESTDIR} --prefix=${PREFIX}
