@@ -8,11 +8,6 @@ pkg_branch=pkg-$DISTRO
 
 ME=$(basename $0)
 
-[[ -d .git ]] || {
-    echo "This is not a git repository; use $ME in a gitpkg git repo".
-    exit 1
-}
-
 # http://stackoverflow.com/a/3879077/337649
 require_clean_work_tree() {
     # Update the index
@@ -42,8 +37,23 @@ require_clean_work_tree() {
     fi
 }
 
+save_initial_branch() {
+    initial_branch=$(git symbolic-ref HEAD)
+    initial_branch=${initial_branch##refs/heads/}
+}
+assert_not_on_pkg_branch() {
+    if [[ $initial_branch == "pkg-$DISTRO" ]]; then
+	cat <<EOF
+$ME must not be run from the pkg-$DISTRO branch. Maybe
+git checkout -f master
+
+EOF
+	exit 1
+    fi
+}
+
 switch_to_pkg(){
-    git checkout pkg-$DISTRO || { echo "Can't checkout pkg-$DISTRO, aborting"; exit 1; }
+    git checkout -f pkg-$DISTRO || { echo "Can't checkout pkg-$DISTRO, aborting"; exit 1; }
 }
 
 update_changes(){ # release oldpatchtag patchtag
@@ -98,8 +108,15 @@ usage() {
        checked out, the spec/yaml is updated by appending
        .gitcount.sha1 to the Release: value (this tries to ensure rpm
        release values increment in a manner that allow rpm upgrades to
-       work)
+       work).
+       ADDITIONALLY: a normal gp_mkpkg is used to prepare the tarball
+       and patches when --ver is not given.
 
+       --git-dir=<dir>
+         The --git-dir option is ideal for working with a local OBS
+         checkout and doing local OBS builds. It makes most sense when
+         --ver is not specified
+         Internally it sets GIT_DIR to <dir> and GIT_WORK_TREE to cwd
 
        $DISTRO is set either in ~/.gitpkg, the GITPKG_DISTRO
        environment variable or using --distro=<DISTRO>. If not
@@ -127,6 +144,23 @@ do_release() {
 	    --edit )
 		manual_edit=true
 		shift ;;
+	    --git-dir=*)
+		gitdir=${1#*=}
+		if ! git  --git-dir $gitdir rev-parse --git-dir > /dev/null 2>&1; then
+		    # not a git dir - try appending .git
+		    if git --git-dir $gitdir/.git rev-parse --git-dir > /dev/null 2>&1; then
+			gitdir=$gitdir/.git
+		    else
+			echo "The --git-dir option must point to a git repo."
+			echo "  $gitdir nor $gitdir/.git are a git directory"
+			exit 1
+		    fi
+		fi
+		export GIT_WORK_TREE=$(pwd)
+		export GIT_DIR=$gitdir
+		export GIT_INDEX_FILE=$(mktemp /tmp/gp.index_XXXXX)
+		git read-tree --empty
+		shift ;;
 	    * )
 		echo "Error $1 not recognised"
 		usage
@@ -134,7 +168,16 @@ do_release() {
 	esac
     done
 
-    require_clean_work_tree
+    git rev-parse --git-dir > /dev/null 2>&1 || {
+	echo "This is not a git repository; use $ME in a gitpkg git repo or use --git-dir".
+	exit 1
+    }
+
+    # We need a clean tree unless we're in another directory using --git-dir
+    if ! [[ $GIT_INDEX_FILE ]]; then require_clean_work_tree; fi
+
+    save_initial_branch
+    assert_not_on_pkg_branch
 
     # store current git postion
     patchtag_sha1=$(git rev-parse HEAD)
