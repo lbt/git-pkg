@@ -1,0 +1,60 @@
+#!/bin/bash
+# gitpkg common shell functions and variables
+
+# DISTRO should go to some config file
+DISTRO=mer
+
+pkg_branch=pkg-$DISTRO
+
+ME=$(basename $0)
+
+
+# Input: $pkgdir
+# Output: $ver  $rel
+get_verrel_from_packaging() {
+    _pkgdir=${1:-.}
+    # See if there's a yaml or a .spec
+    _vrfile=$(cd $_pkgdir; find . -maxdepth 1 -name '*yaml' -print -quit)
+    _vrfile=${vrfile:-$(cd $_pkgdir; find . -maxdepth 1 -name '*spec' -print -quit)}
+    if [[ -f $_pkgdir/$_vrfile ]]; then
+	ver=$(grep Version: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
+	rel=$(grep Release: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
+	echo "Found Version/Release: $ver-$rel in the packaging"
+    fi
+}
+
+# Input: 
+# Output: 
+# http://stackoverflow.com/a/3879077/337649
+require_clean_work_tree() {
+    # Update the index
+    git update-index -q --ignore-submodules --refresh
+    local _err=0
+
+    # Disallow unstaged changes in the working tree
+    if ! git diff-files --quiet --ignore-submodules --
+    then
+        echo >&2 "cannot $1: you have unstaged changes."
+        git diff-files --name-status -r --ignore-submodules -- >&2
+        _err=1
+    fi
+
+    # Disallow uncommitted changes in the index
+    if ! git diff-index --cached --quiet HEAD --ignore-submodules --
+    then
+        echo >&2 "cannot $1: your index contains uncommitted changes."
+        git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
+        _err=1
+    fi
+
+    if [ $_err = 1 ]
+    then
+        echo >&2 "Please commit or stash them before using $ME."
+        exit 1
+    fi
+}
+
+count_commits() {
+    git rev-list $1..$2 | wc -l
+}
+

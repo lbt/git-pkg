@@ -2,15 +2,10 @@
 
 # gp_setup
 # This is part of the Mer git-packaging suite
-# It sets up a git repo to use git-pkg
+# It sets up a git repo to use git-pkg and can use
+# existing packaging
 
-# If not
-# Check if a mer-pkg exists already
-# Create mer-pkg
-# Add templates
-
-DISTRO=mer
-pkg_branch=pkg-$DISTRO
+. ${GP_LIB:=/usr/share/gitpkg}/gp_common
 
 [[ -d .git ]] || {
     echo "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
@@ -38,53 +33,9 @@ EOF
     usage_existing
 }
 
-count_commits() {
-    git rev-list $1..$2 | wc -l
-}
-
-# http://stackoverflow.com/a/3879077/337649
-require_clean_work_tree() {
-    # Update the index
-    git update-index -q --ignore-submodules --refresh
-    err=0
-
-    # Disallow unstaged changes in the working tree
-    if ! git diff-files --quiet --ignore-submodules --
-    then
-        echo >&2 "cannot $1: you have unstaged changes."
-        git diff-files --name-status -r --ignore-submodules -- >&2
-        err=1
-    fi
-
-    # Disallow uncommitted changes in the index
-    if ! git diff-index --cached --quiet HEAD --ignore-submodules --
-    then
-        echo >&2 "cannot $1: your index contains uncommitted changes."
-        git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
-        err=1
-    fi
-
-    if [ $err = 1 ]
-    then
-        echo >&2 "Please commit or stash them before using gp_setup."
-        exit 1
-    fi
-}
-
 unpack_tarball() {
     rm -rf *
     tar --transform 's_[^/]*/__' -xf $1
-}
-
-get_verrel_from_packaging() {
-    # See if there's a yaml or a .spec
-    vrfile=$(cd $pkgdir; find . -maxdepth 1 -name '*yaml' -print -quit)
-    vrfile=${vrfile:-$(cd $pkgdir; find . -maxdepth 1 -name '*spec' -print -quit)}
-    if [[ -f $pkgdir/$vrfile ]]; then
-	ver=$(grep Version: $pkgdir/$vrfile | cut -f2 -d: | tr -d ' ')
-	rel=$(grep Release: $pkgdir/$vrfile | cut -f2 -d: | tr -d ' ')
-	echo "Found Version/Release: $ver-$rel in the packaging"
-    fi
 }
 
 usage_existing() {
@@ -444,7 +395,7 @@ prepare_pkg_branch() {
 	exit 1
     fi
 
-    require_clean_work_tree
+    require_clean_work_tree "run $ME"
 
     # This creates the orphaned pkg-* branch
     git checkout --orphan ${pkg_branch}

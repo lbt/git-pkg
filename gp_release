@@ -3,39 +3,7 @@
 # gp_release
 # This is part of the Mer git-packaging suite
 
-DISTRO=mer
-pkg_branch=pkg-$DISTRO
-
-ME=$(basename $0)
-
-# http://stackoverflow.com/a/3879077/337649
-require_clean_work_tree() {
-    # Update the index
-    git update-index -q --ignore-submodules --refresh
-    err=0
-
-    # Disallow unstaged changes in the working tree
-    if ! git diff-files --quiet --ignore-submodules --
-    then
-        echo >&2 "cannot $1: you have unstaged changes."
-        git diff-files --name-status -r --ignore-submodules -- >&2
-        err=1
-    fi
-
-    # Disallow uncommitted changes in the index
-    if ! git diff-index --cached --quiet HEAD --ignore-submodules --
-    then
-        echo >&2 "cannot $1: your index contains uncommitted changes."
-        git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
-        err=1
-    fi
-
-    if [ $err = 1 ]
-    then
-        echo >&2 "Please commit or stash them before using gp_setup."
-        exit 1
-    fi
-}
+. ${GP_LIB:=/usr/share/gitpkg}/gp_common
 
 save_initial_branch() {
     initial_branch=$(git symbolic-ref HEAD)
@@ -85,12 +53,15 @@ usage() {
 
        --ver=<version-release>
 
-         if --ver is used to provide <version-release> then a new
-         package version will be created.  Updates to _src, .changes,
-         .yaml and .spec files are made. Version: / Release: values
-         and Patches: lines will be updated in the yaml/spec. A
-         changelog entry is prompted for (using git log as a base) and
-         the git repo will be tagged.
+         if --ver is used then a new package version will be created.
+         Updates to _src, .changes, .yaml and .spec files are
+         made. Version: / Release: values and Patches: lines will be
+         updated in the yaml/spec. A changelog entry is prompted for
+         (using git log as a base) and the git repo will be tagged.
+
+         If <version-release> is not specified then it is guessed from
+         the packaging and uses perls string increment on
+         <release>. This often works :)
 
          HEAD when the command is run will be tagged as
          $DISTRO-<version-release> and packaging as
@@ -174,7 +145,7 @@ do_release() {
     }
 
     # We need a clean tree unless we're in another directory using --git-dir
-    if ! [[ $GIT_INDEX_FILE ]]; then require_clean_work_tree; fi
+    if ! [[ $GIT_INDEX_FILE ]]; then require_clean_work_tree "run $ME"; fi
 
     save_initial_branch
     assert_not_on_pkg_branch
@@ -233,7 +204,7 @@ EOF
 	fi
     else
 	sha1=$(git rev-parse --short $patchtag_sha1)
-	gitcount=$(git rev-list ${basetag}..${patchtag} | wc -l)
+	gitcount=$(count_commits ${basetag} ${patchtag})
 	sed -i -re"s/Release:\s*(\S*)/Release: \1.$gitcount.$sha1/" $pkgfile
 	# Now add a dummy changelog entry
 	changes=$(find . -maxdepth 1 -name '*changes' -print -quit)
