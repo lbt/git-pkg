@@ -24,6 +24,12 @@ switch_to_pkg(){
     git checkout -f pkg-$DISTRO || { echo "Can't checkout pkg-$DISTRO, aborting"; exit 1; }
 }
 
+cleanup(){
+    # switch back to initial branch
+    echo "Attempting to switch back to $initial_branch in git"
+    git checkout $initial_branch
+}
+
 update_changes(){ # release oldpatchtag patchtag
     release=$1
     tag1=$2
@@ -51,7 +57,7 @@ usage() {
        Used to create a new release or prepare for an intermediate
        build
 
-       --ver=<version-release>
+       --ver[=<version-release>]
 
          if --ver is used then a new package version will be created.
          Updates to _src, .changes, .yaml and .spec files are
@@ -102,7 +108,10 @@ do_release() {
 
     while [[ $1 ]]; do
 	case $1 in
-	    --ver* )
+	    --ver )
+		get_verrel=yes
+		shift;;
+	    --ver=* )
 		verrel=${1#*=}
 		if [[ $verrel =~ $verrel_regex ]]; then
 		    ver=${verrel%-*}
@@ -111,6 +120,7 @@ do_release() {
 		    echo "The --ver= option must provide <ver>-<rel>"
 		    exit 1
 		fi
+		# if $verrel is "" then we guess it later when the packaging is present
 		shift ;;
 	    --edit )
 		manual_edit=true
@@ -152,8 +162,23 @@ do_release() {
 
     # store current git postion
     patchtag_sha1=$(git rev-parse HEAD)
-
+    
+    trap cleanup EXIT
     switch_to_pkg
+
+    # Get ver-rel and increment it if we need to
+    if [[ $get_verrel ]]; then
+	get_verrel_from_packaging .
+	oldrel=$rel
+	rel=$(perl -e"\$r='$rel';print ++\$r;")
+	echo "Automagically guessed $ver-$oldrel -> $ver-$rel"
+	verrel=$ver-$rel
+	if ! [[ $rel ]] || [[ $rel == "1" ]]; then
+	    echo "The value guessed for Release: is '$rel' and this is probably wrong. Please specify an exact value for --ver="
+	    echo "Currently Version: $ver and Release: $oldrel"
+	    exit 1
+	fi
+    fi
 
     # Update _src
     IFS=: read type tarball basetag oldpatchtag rest < _src
@@ -198,6 +223,8 @@ When you are done, commit and tag the changes:
 git commit -am"Release $patchtag"
 git tag pkg-$patchtag
 EOF
+	    # Don't try to switch back to original branch
+	    trap - EXIT
 	else
 	    git commit -am"Release $patchtag"
 	    git tag pkg-$patchtag
@@ -222,6 +249,8 @@ EOF
 	cat <<EOF
 The tarball and patches have been prepared for building.
 EOF
+	# Don't try to switch back to original branch
+	trap - EXIT
     fi
 }
 
