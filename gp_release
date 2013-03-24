@@ -20,7 +20,7 @@ git_tag_exists() { git show-ref --tags --quiet --verify -- "refs/tags/$1"; }
 git_branch_exists() { git show-ref --quiet --verify -- "refs/heads/$1"; }
 
 switch_to_pkg(){
-    git checkout -f pkg-$DISTRO || { echo "Can't checkout pkg-$DISTRO, aborting"; exit 1; }
+    git checkout -f pkg-$DISTRO || { fatal "Can't checkout pkg-$DISTRO, aborting"; }
 }
 
 cleanup(){
@@ -118,8 +118,7 @@ do_release() {
 	    --base=*)
 		newbase=${1#*=}
 		if not git_tag_exists $newbase; then
-		    echo "--base must provide a valid tag. '$newbase' is not a valid tag."
-		    exit 1
+		    fatal "--base must provide a valid tag. '$newbase' is not a valid tag."
 		fi
 		# if a plain --ver is given aswell (ie without
 		# =ver-rel) that's ambiguous since --base implies a
@@ -137,8 +136,7 @@ do_release() {
 		    ver=${verrel%-*}
 		    rel=${verrel##*-}
 		else
-		    echo "The --ver= option must provide <ver>-<rel>"
-		    exit 1
+		    fatal "The --ver= option must provide <ver>-<rel>"
 		fi
 		# if $verrel is "" then we guess it later when the packaging is present
 		shift ;;
@@ -152,9 +150,8 @@ do_release() {
 		    if git --git-dir $gitdir/.git rev-parse --git-dir > /dev/null 2>&1; then
 			gitdir=$gitdir/.git
 		    else
-			echo "The --git-dir option must point to a git repo."
-			echo "  $gitdir nor $gitdir/.git are a git directory"
-			exit 1
+			fatal "The --git-dir option must point to a git repo. \n" \
+                            "$gitdir nor $gitdir/.git are a git directory"
 		    fi
 		fi
 		export GIT_WORK_TREE=$(pwd)
@@ -169,10 +166,8 @@ do_release() {
 	esac
     done
 
-    git rev-parse --git-dir > /dev/null 2>&1 || {
-	echo "This is not a git repository; use $ME in a gitpkg git repo or use --git-dir".
-	exit 1
-    }
+    git rev-parse --git-dir > /dev/null 2>&1 || 
+	fatal "This is not a git repository; use $ME in a gitpkg git repo or use --git-dir."
 
     # We need a clean tree unless we're in another directory using --git-dir
     if ! [[ $GIT_INDEX_FILE ]]; then require_clean_work_tree "run $ME"; fi
@@ -195,9 +190,9 @@ do_release() {
 	    echo "Automagically guessed $ver-$oldrel -> $ver-$rel"
 	    verrel=$ver-$rel
 	    if ! [[ $rel ]] || [[ $rel == "1" ]]; then
-		echo "The value guessed for Release: is '$rel' and this is probably wrong. Please specify an exact value for --ver="
-		echo "Currently Version: $ver and Release: $oldrel"
-		exit 1
+		fatal "The value guessed for Release: is '$rel' and this is probably wrong.\n" \
+                    "Please specify an exact value for --ver=\n" \
+		    "Currently Version: $ver and Release: $oldrel"
 	    fi
 	    ;;
 	newbase )
@@ -241,8 +236,7 @@ do_release() {
 	pkgfile=$(find . -maxdepth 1 -name '*spec' -print -quit)
     fi
     if [[ ! $pkgfile ]]; then
-	print "No spec or yaml files found"
-	exit 1
+	fatal "No spec or yaml files found"
     fi
 
     if [[ $verrel ]]; then
