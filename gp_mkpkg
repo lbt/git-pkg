@@ -71,6 +71,8 @@ def guess_format(archive):
         return ("tar", "gzip")
     elif (re.search(r'\.tar\.bz2$', archive)):
         return ("tar", "bzip2")
+    elif (re.search(r'\.tar\.xz$', archive)):
+        return ("tar", "xz")
     else:
         raise UnknownFormat()
 
