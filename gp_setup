@@ -138,9 +138,6 @@ use_existing() {
     [[ $basetag ]] || { echo "tag not supplied"; exit 1; }
     [[ $pkgdir ]] || { echo "pkgdir not supplied"; exit 1; }
 
-    [[ $gp_type == "pristine-tar" && ! $pbranch ]] && {
-	echo "Error: pristine-tar requires a --patch-branch value"; exit 1; }
-
     # Determine version/release numbers
     get_verrel_from_packaging $pkgdir
     rel=${rel:-$force_rel}
@@ -150,10 +147,7 @@ use_existing() {
     patches_tag=$DISTRO-${ver}-${rel}
     pkg_tag=pkg-$DISTRO-${ver}-${rel}
 
-    [[ $gp_type == "pristine-tar" && ! $pbranch ]] && {
-	echo "Error: pristine-tar requires a --patch-branch value"; exit 1; }
-
-    pbranch="${DISTRO}-${ver}"
+    pbranch="${DISTRO}-master"
 
     if ! [[ -d .git ]]; then
 	echo "This is not a git repository"
@@ -192,7 +186,8 @@ use_existing() {
     git checkout  -q -f $basetag
     src_tag_sha1=$(git rev-parse HEAD) # Store this sha1 so we make tags later
 
-    [[ $pbranch ]] && git checkout -b $pbranch # Make a patches branch if we need to
+    # Ensure the patches branch is rooted at basetag
+    git branch -f $pbranch $src_tag_sha1
 
     # Pristine tar approach needs some extra work
     # 1. Commit the tarball in packaging to pristine tar
@@ -211,7 +206,6 @@ use_existing() {
     # We'll probably need a --fuzz option at some point
     # Keep the dir clean and we should abort/warn when patches don't apply
     for patch in $(cd $pkgdir; grep Patch.*: *spec | cut -f2 -d:); do
-	if [[ ! $pbranch ]] ; then echo "Error: No patch-tag supplied and patches found"; exit 1; fi
 	
 	echo Applying $patch
 	if ! patch $FUZZ -p1 --no-backup-if-mismatch -s < $pkgdir/$patch; then
