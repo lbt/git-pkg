@@ -5,10 +5,6 @@
 
 . ${GP_LIB:=/usr/share/gitpkg}/gp_common
 
-save_initial_branch() {
-    initial_branch=$(git symbolic-ref HEAD)
-    initial_branch=${initial_branch##refs/heads/}
-}
 assert_not_on_pkg_branch() {
     if [[ $initial_branch == "pkg-$DISTRO" ]]; then
 	cat <<EOF

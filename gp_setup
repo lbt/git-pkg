@@ -12,6 +12,8 @@
     exit 1
 }
 
+trap cleanup EXIT
+
 usage() {
     cat <<EOF
     gp_setup --manual [--distro=<DISTRO>] \
@@ -36,6 +38,24 @@ EOF
 confirm_continue() {
     echo "Press <enter> to continue or ^C"
     read dummy
+}
+
+git_tag_cleanly() {
+    git tag $1
+    tag_cleanup_list+=" $1"
+}
+
+cleanup(){
+    echo "Attempting to switch back to $initial_branch in git"
+    git checkout -f $initial_branch
+    echo "cleaning up tags: $tag_cleanup_list"
+    for tag in $tag_cleanup_list; do
+	git tag -d $tag
+    done
+    echo "cleaning up branches: $branch_cleanup_list"
+    for branch in $branch_cleanup_list; do
+	git branch -D $branch
+    done
 }
 
 unpack_tarball() {
@@ -193,15 +213,18 @@ use_existing() {
 	git add .
 	git commit -m"Initial commit from $tarball"
 	# Create a tag for the tarball - it's OK to do it now in unpack mode
-	git tag $basetag
+	git_tag_cleanly $basetag
     fi
 
     # Branch from the appropriate tag
     git checkout -q -f $basetag
-    src_tag_sha1=$(git rev-parse HEAD) # Store this sha1 so we make tags later
+    # We tag now since gp_mkpkg needs it
+    git_tag_cleanly $src_tag
 
     # Ensure the patches branch is rooted at basetag
-    git branch -f $pbranch $src_tag_sha1
+    git branch -f $pbranch
+    branch_cleanup_list+=" $pbranch"
+    git checkout $pbranch
 
     # Pristine tar approach needs some extra work
     # 1. Commit the tarball in packaging to pristine tar
@@ -211,6 +234,7 @@ use_existing() {
     if [[ $gp_type == "pristine-tar" ]] ; then
 	echo "Pristine tar : removing all files and unpacking tarball to record any delta to $basetag"
 	pristine-tar commit $pkgdir/$tarball $basetag
+	branch_cleanup_list+=" pristine-tar"
 	unpack_tarball $pkgdir/$tarball	
 	git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
 	git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the $DISTRO source tree ready for local patches"
@@ -234,7 +258,7 @@ use_existing() {
     # Only do this next section if we actually found patches to apply
     if [[ $have_patches ]] ; then
 	# We need to tag the patch branch head
-	patches_tag_sha1=$(git rev-parse HEAD)
+	git_tag_cleanly $patches_tag
 
         # Pristine tar needs to skip the pristine-tar-delta patch
 	if [[ $gp_type == "pristine-tar" ]] ; then
@@ -266,14 +290,14 @@ use_existing() {
 	if [[ $gp_type != "pristine-tar" ]] ; then
 	    echo "SetupOptions: -q -n src"  >> $yamlfile
 	fi
-	gp_mkpkg --no-checkout --no-tarball
+	gp_mkpkg --no-checkout --no-tarball || exit 1
 
 	specify -N $yamlfile
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
-	    gp_mkpkg -n --no-tarball  --no-src
+	    gp_mkpkg -n --no-tarball  --no-src  || exit 1
 	else
-	    gp_mkpkg -n --no-tarball
+	    gp_mkpkg -n --no-tarball  || exit 1
 	fi
     fi
 
@@ -282,10 +306,7 @@ use_existing() {
 
     # And finally a commit
     git commit -m"Initial git package of $basetag as $pbranch"
-
-    git tag $src_tag $src_tag_sha1
-    [[ $patches_tag_sha1 ]] && git tag $patches_tag $patches_tag_sha1
-    git tag $pkg_tag
+    git_tag_cleanly $pkg_tag
 
     # Comment on what we've created
     echo Used: 
@@ -418,6 +439,7 @@ prepare_pkg_branch() {
     require_clean_work_tree "run $ME"
 
     # This creates the orphaned pkg-* branch
+    branch_cleanup_list+=" $pkg_branch"
     git checkout --orphan ${pkg_branch}
     git rm -q -rf .
 
@@ -434,6 +456,8 @@ prepare_pkg_branch() {
 
 }
 
+save_initial_branch
+
 case $1 in
     --auto )
 	shift
@@ -446,3 +470,5 @@ case $1 in
     * )
 	usage ;;
 esac
+
+trap - EXIT

@@ -58,3 +58,8 @@ count_commits() {
     git rev-list $1..$2 | wc -l
 }
 
+# Sets global initial_branch
+save_initial_branch() {
+    initial_branch=$(git symbolic-ref HEAD)
+    initial_branch=${initial_branch##refs/heads/}
+}
