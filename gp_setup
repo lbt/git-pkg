@@ -203,7 +203,7 @@ use_existing() {
     # Guess the tarball
     tarball=$(cd $pkgdir; find * -name *t*gz)
     [[ ! $tarball ]] && tarball=$(cd $pkgdir; find * -name *t*bz2)
-    echo "tarball: $tarball"
+    echo "Using tarball: $tarball"
 
     # If this is a pure pristine-tar with no git tree then just unpack
     # the tarball as a starting point
@@ -211,7 +211,7 @@ use_existing() {
 	echo "Pristine tar : Unpacking tarball as initial commit"
 	unpack_tarball $pkgdir/$tarball	
 	git add .
-	git commit -m"Initial commit from $tarball"
+	git commit -q -m"Initial commit from $tarball"
 	# Create a tag for the tarball - it's OK to do it now in unpack mode
 	git_tag_cleanly $basetag
     fi
@@ -237,7 +237,7 @@ use_existing() {
 	branch_cleanup_list+=" pristine-tar"
 	unpack_tarball $pkgdir/$tarball	
 	git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
-	git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the $DISTRO source tree ready for local patches"
+	git commit -q --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the $DISTRO source tree ready for local patches"
 	have_patches=1
     fi
 
@@ -251,7 +251,7 @@ use_existing() {
 	    echo "Patch $pkgdir/$patch seemed to apply badly - fixup in a different terminal and press return to commit it and continue"
 	    read dummy
 	fi
-	git commit -am"$(basename $patch .patch)"
+	git commit -q -am"$(basename $patch .patch)"
 	have_patches=1
     done
 
@@ -305,7 +305,7 @@ use_existing() {
     git add * >/dev/null 2>&1
 
     # And finally a commit
-    git commit -m"Initial git package of $basetag as $pbranch"
+    git commit -q -m"Initial git package of $basetag as $pbranch"
     git_tag_cleanly $pkg_tag
 
     # Comment on what we've created
@@ -442,6 +442,7 @@ prepare_pkg_branch() {
     branch_cleanup_list+=" $pkg_branch"
     git checkout --orphan ${pkg_branch}
     git rm -q -rf .
+    git commit --allow-empty -m"Initial packaging branch (empty)"
 
     # Remove stray files that may have crept in but only if we're in a .git repo
     if [[ -d .git ]] ; then
