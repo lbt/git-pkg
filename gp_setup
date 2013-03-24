@@ -67,7 +67,7 @@ unpack_tarball() {
 
 usage_existing() {
 cat <<EOF
-    --auto [--pristine] --base-on=<tag>|--unpack=<tag>
+    --auto [--pristine] --base-on=<tag>|--unpack-to=<tag>
            --pkgdir=<packaging dir> [--patch-branch=<branch/tag>]
            [--ver=<ver>[-<rel>]]
 
