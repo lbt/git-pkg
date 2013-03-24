@@ -1,2 +1,20 @@
+* Sun Mar 2013 David Greaves <david@dgreaves.com> - 0.0.2-1
+- Extensive changes: see README.rst
+- Patch and branch formats defined more rigidly
+- Added source service for OBS
+- Merged contributions from Thomas Perl and Kalle Jokiniemi
+- Make supports proper packaging
+- gp_mkpkg now handles patches in spec and yaml nicely;
+  supports --git-dir to allow running in an osc dir
+- gp_setup improved to handle more cases using existing
+  packaging
+- gp_release usefully updates packaging for single patches
+  or when a new upstream is released; also useful to make a
+  temporary packaging set for trial builds using format:
+  Release: <rel>.<gitcount>.<sha1> 
+- Lots of "do the right thing"; eg get Version/Release from
+  packaging; compare tag to Version; auto-increment Release
+- Overview documentation should be clearer
+
 * Mon Sep 10 2012 David Greaves <david@dgreaves.com> - 0.0.1-1
 - Initial packaging for 0.0.1

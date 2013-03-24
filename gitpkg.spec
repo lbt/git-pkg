@@ -9,7 +9,7 @@ Name:       gitpkg
 # << macros
 
 Summary:    Helps manage packaging in git
-Version:    0.0.1
+Version:    0.0.2
 Release:    1
 Group:      Development
 License:    GPLv2
@@ -18,13 +18,14 @@ Source100:  gitpkg.yaml
 Requires:   git
 Requires:   pristine-tar
 Requires:   python
+BuildRequires:  python
 
 %description
 Allows the packaging to be maintained in a discrete git tree in the same git repo as the source
 
 
 %prep
-%setup -q -n %{name}-%{version}
+%setup -q -n src
 
 # >> setup
 # << setup
@@ -33,7 +34,7 @@ Allows the packaging to be maintained in a discrete git tree in the same git rep
 # >> build pre
 # << build pre
 
-%configure --disable-static
+
 make %{?jobs:-j%jobs}
 
 # >> build post
@@ -51,5 +52,16 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
+%{_bindir}/gp_release
+%{_bindir}/gp_setup
+%{_bindir}/gp_mkpkg
+%{_datadir}/gitpkg/gp_common
+%{_libdir}/obs/service/gitpkg
+%{_libdir}/obs/service/gitpkg.service
+%{_libdir}/obs/service/gp_mkpkg
+%{_libdir}/python2.7/site-packages/BlockDumper.py
+%{_libdir}/python2.7/site-packages/BlockDumper.pyc
+%{_libdir}/python2.7/site-packages/BlockDumper.pyo
+%{_libdir}/python2.7/site-packages/gitpkg-0.0.2-py2.7.egg-info
 # >> files
 # << files
