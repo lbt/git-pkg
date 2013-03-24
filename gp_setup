@@ -55,7 +55,14 @@ cleanup(){
 
 unpack_tarball() {
     rm -rf *
-    tar --transform 's_[^/]*/__' -xf $1
+    case $1 in
+	*xz )
+	    xzcat $1 | tar --transform 's_[^/]*/__' -xf -
+	    ;;
+	* )
+	    tar --transform 's_[^/]*/__' -xf $1
+	    ;;
+    esac
 }
 
 usage_existing() {
