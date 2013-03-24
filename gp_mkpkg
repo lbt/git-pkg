@@ -118,7 +118,7 @@ def prepare_tarball_and_patches(args):
             # pristine-tar:<tarball>:<tag1>:<tag2>
             # extract upstream tarball and make patches from tag1 to tag2
             # (if present) skipping the special 'pristine-tar' diff patch
-            if len(src) < 3:
+            if len(src) < 4:
                 raise Exception("Not enough arguments for 'pristine-tar' line in _src")
 
             tarball, tag1 = src[1:3]
