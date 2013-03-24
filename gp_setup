@@ -296,7 +296,7 @@ use_existing() {
 	fi
 	gp_mkpkg --no-checkout --no-tarball || fatal "gp_mkpkg failed"
 
-	specify -s -N $yamlfile
+	specify -s -N -n $yamlfile
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
 	    gp_mkpkg -n --no-tarball  --no-src  || fatal "gp_mkpkg failed"

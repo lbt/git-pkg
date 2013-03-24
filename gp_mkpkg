@@ -248,7 +248,7 @@ def apply_patches_to_yaml(args, p, yamlfilename):
     f.close()
 
     print "Running specify"
-    subprocess.check_output(['specify', "-N", "-s"])
+    subprocess.check_output(['specify', "-N", "-s", "-n"])
 
 def apply_patches(args, p):
     ""
