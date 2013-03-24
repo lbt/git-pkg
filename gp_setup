@@ -7,10 +7,6 @@
 
 . ${GP_LIB:=/usr/share/gitpkg}/gp_common
 
-[[ -d .git ]] || {
-    fatal "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
-}
-
 trap cleanup EXIT
 
 usage() {
@@ -159,6 +155,11 @@ use_existing() {
 		fatal "Error $1 not recognised";;
 	esac
     done
+
+    # If --unpack-to didn't make one then complain if we're not in a git repo
+    [[ -d .git ]] || {
+	fatal "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
+    }
 
     [[ $basetag ]] || { fatal "tag not supplied"; }
     [[ $pkgdir ]] || { fatal "You must supply --pkgdir when using --auto"; }
