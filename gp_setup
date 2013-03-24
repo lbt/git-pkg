@@ -33,6 +33,11 @@ EOF
     usage_existing
 }
 
+confirm_continue() {
+    echo "Press <enter> to continue or ^C"
+    read dummy
+}
+
 unpack_tarball() {
     rm -rf *
     tar --transform 's_[^/]*/__' -xf $1
@@ -140,8 +145,17 @@ use_existing() {
 
     # Determine version/release numbers
     get_verrel_from_packaging $pkgdir
-    rel=${rel:-$force_rel}
-    ver=${ver:-$force_ver}
+    rel=${force_rel:-${rel:-1}}
+    ver=${force_ver:-${ver:-$basetag}}
+    ver_pattern='^[0-9.]*$'
+    if ! [[ $ver =~ $ver_pattern ]]; then
+	echo "WARNING: Version is set to $ver which is not a simple X.Y.Z version"
+	confirm_continue
+    fi
+    if [[ $(echo $ver | tr -dc '[:digit:]') != $(echo $basetag | tr -dc '[:digit:]') ]]; then
+	echo "WARNING: Version is $ver and basetag is $basetag : the numbers don't match"
+	confirm_continue
+    fi
 
     src_tag=$DISTRO-${ver}
     patches_tag=$DISTRO-${ver}-${rel}
