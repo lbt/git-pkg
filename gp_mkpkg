@@ -38,9 +38,9 @@ class Patches():
 class UnknownFormat(Exception):
     pass
 
-def git(*args):
+def git(*args, **kwargs):
     """Run git with arguments, return stdout as string"""
-    return subprocess.check_output([GIT_CMD] + list(args))
+    return subprocess.check_output([GIT_CMD] + list(args), **kwargs)
 
 def fail(msg, *args):
     """Report an error message and exit with failure"""
