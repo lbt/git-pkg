@@ -214,6 +214,7 @@ use_existing() {
 	unpack_tarball $pkgdir/$tarball	
 	git add .; git ls-files --deleted | xargs --no-run-if-empty git rm
 	git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the $DISTRO source tree ready for local patches"
+	have_patches=1
     fi
 
     # Apply the patches mentioned in the spec file in the order they appear
