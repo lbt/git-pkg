@@ -71,14 +71,14 @@ usage() {
          HEAD when the command is run will be tagged as
          $DISTRO-<version-release> and packaging as
          pkg-$DISTRO-<version-release>. (Usually git checkout -f
-         master would be run before running $ME
+         master would be run before running $ME)
 
        --base=<tag>
 
          If --base is provided then it is used as the new base tag
          from which patches are based. If --ver=<version>-<release> is
          not given then <version> is assumed to be <tag> and <release>
-         is assumed to be "1". A $DISTRO-<version> branch will be made
+         is assumed to be "1". A $DISTRO-master branch will be made
          if not present.
 
        --edit
@@ -216,11 +216,9 @@ do_release() {
     # If we have a new basetag ...
     if [[ $newbase ]]; then
 	basetag=$newbase
-	# There should be a mer-ver branch
-	if not git_branch_exists $DISTRO-$ver; then
-	    echo "Making a $DISTRO-$ver branch"
-	    git branch $DISTRO-$ver $patchtag
-	fi
+	# The mer-master branch should point here now
+	echo "Reset $DISTRO-master branch to start at $basetag"
+	git branch -f $DISTRO-master $basetag
     fi
 
     # if basetag and patchtag have the same sha1...
