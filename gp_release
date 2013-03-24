@@ -159,6 +159,8 @@ do_release() {
 		export GIT_INDEX_FILE=$(mktemp /tmp/gp.index_XXXXX)
 		git read-tree --empty
 		shift ;;
+	    *-h*) usage;
+		exit 0;;
 	    * )
 		echo "Error $1 not recognised"
 		usage
