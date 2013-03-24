@@ -245,12 +245,16 @@ use_existing() {
     # Apply the patches mentioned in the spec file in the order they appear
     # We'll probably need a --fuzz option at some point
     # Keep the dir clean and we should abort/warn when patches don't apply
-    for patch in $(cd $pkgdir; grep Patch.*: *spec | cut -f2 -d:); do
+    for patch in $(cd $pkgdir; grep Patch.*: *spec | cut -f2- -d:); do
 
 	echo Applying $patch
-	if ! patch $FUZZ -p1 --no-backup-if-mismatch -s < $pkgdir/$patch; then
-	    echo "Patch $pkgdir/$patch seemed to apply badly - fixup in a different terminal and press return to commit it and continue"
-	    read dummy
+	patch=$(basename $patch)
+	if ! patch $FUZZ --batch -p1 --no-backup-if-mismatch -s < $pkgdir/$patch; then
+	    echo "Failed to apply -p1 - trying -p0"
+	    if ! patch $FUZZ --batch -p0 --no-backup-if-mismatch -s < $pkgdir/$patch; then
+		echo "Patch $pkgdir/$patch seemed to apply badly - fixup in a different terminal and press return to commit it and continue"
+		read dummy
+	    fi
 	fi
 	git commit -q -am"$(basename $patch .patch)"
 	have_patches=1
