@@ -75,7 +75,20 @@ cat <<EOF
        --pkgdir=<packaging dir>
                   is the source dir for the spec/yaml/changes/patches
                   This could be a 'checked out' osc dir.
-                  Any patches found in pkgdir are applied at <tag>
+                  Any patches mentioned in the spec file and found in
+                  pkgdir are applied at <tag> in the order they appear
+                  in the spec file.
+
+       --fuzz=<fuzz>
+                  Can be useful if the patches found in pkgdir don't
+                  apply cleanly.
+
+       --use-all-packaging
+                  Use this flag if pkgdir has been carefully prepared
+                  to remove unwanted patches and tarballs but still
+                  contains .gz or .bz2 files which would otherwise be
+                  discarded
+
 EOF
 }
 
