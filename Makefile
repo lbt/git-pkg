@@ -1,9 +1,11 @@
 PYTHON ?= python
-SCRIPTS=gp_setup gp_release gp_mkpkg
+SCRIPTS=gp_setup gp_release
 LIBS=gp_common
 BINDIR=${DESTDIR}/usr/bin
 SHAREDIR=${DESTDIR}/usr/share/gitpkg
 OBSDIR=${DESTDIR}/usr/lib/obs/service
+PREFIX=/usr
+
 default:
 
 install:
