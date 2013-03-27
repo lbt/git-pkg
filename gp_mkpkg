@@ -218,7 +218,8 @@ def apply_patches_to_spec(args, p, specfilename):
     elif args.setup_src:
         print "Adjusting %setup since git-pkg unpacks to src/\n"
         spec_new.extend("# Adjusting %%setup since git-pkg unpacks to src/\n")
-        maybe_setup = re.sub(r'-n [^ ]*$', '-n src\n', maybe_setup)
+        spec_new.extend("# %s" % re.sub(r'%', '%%', maybe_setup))
+        maybe_setup = re.sub(r'(-n [^ ]*)?$', ' -n src\n', maybe_setup)
 
     # Output the (hopefully %setup) line and all %patch lines
     spec_new.extend(maybe_setup)
