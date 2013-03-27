@@ -3,34 +3,44 @@ This tool supports managing rpm packaging (spec files and patches) from a git tr
 Normal Operation
 ================
 
-Assuming a working package that needs a patch:
+New release of a working package that needs a patch? use --rel:
+
 * Checkout the mer-master branch
 * Commit your changes/patches
-* gp_release --ver=<Ver-Rel>
+* gp_release --rel=<Ver-Rel>
 * git push --tags origin master mer-pkg
 
 Want to work on the packaging? Same approach but do --edit and then commit
 your packaging changes:
-* gp_release --ver=<Ver-Rel> --edit
+
+* gp_release --rel=<Ver-Rel> --edit
 * hack on the packaging
 * git commit -am"Release <Ver-Rel>"
 
 Fancy using osc to do a local verify build?
+
 * osc co myprj/pkg
 * cd myprj/pkg
 * gp_release --git-dir=<my gitpkg repo with changes>
 * osc build
 
 Need to setup a new package?
+
 * Clone upstream
 * Find the right tag and see if a pristine-tar should also be used
 * Got some good packaging from OBS? Use --auto
-* gp_setup --auto --pristine --base-on=RELEASE_0_9_7 --pkgdir=<good packaging> --ver=0.9.7-1
+* gp_setup --auto --pristine --base-on=RELEASE_0_9_7 --pkgdir=<good packaging> --rel=0.9.7-1
 otherwise:
-* gp_setup --manual --pkgdir=<rough packaging> --ver=0.9.7-1
 
+* gp_setup --manual --pkgdir=<rough packaging> --rel=0.9.7-1
 
-Basically gp_release is for incrementing the Release and adding patches; gp_setup is for setting up new package repositories.
+New upstream version? use --ver:
+
+* Checkout the mer-master branch or pull the upstream and tags
+* gp_release --ver=<release-tag>
+* git push --tags origin master mer-pkg
+
+Basically gp_release is for managing Version: and Release: and adding patches; gp_setup is for setting up new package repositories. Other tools are used by the OBS to checkout the code for building.
 
 Why is it needed?
 =================
@@ -63,11 +73,8 @@ For a distro/product there are 2 types of package:
 
 gitpkg is useful for both upstream and native packages and ensures that packaging is kept distinct from the code.
 
-The tool assumes that OBS is not being used as the primary store for code and packaging.
+The tool assumes that OBS is not being used as the primary store for code and packaging and that vanilla rpm/tarball+spec is the basic build source.
 
-Notes:
-
-* The tarball uses src/ as the location for git packages unless pristine-tar is in use
 
 What does it do?
 ================
@@ -105,11 +112,13 @@ so we can use --auto
 
 Looking at the tarball that is released we see there are changes to the git tree (autogen.sh etc) so we'll use --pristine.
 
-The release tag is "RELEASE_0_9_7" so that will be the --base-on value; since this isn't a simple version we need to specify --ver=0.9.7-1
+The release tag is "RELEASE_0_9_7" so that will be the --base-on value; since this isn't a simple version we need to specify --rel=0.9.7-1
 
 The command then is::
 
-  gp_setup --auto --pristine --base-on=RELEASE_0_9_7 --pkgdir=/mer/obs/cobs/Project:KDE:Mer_Extras/oprofile --ver=0.9.7-1
+  gp_setup --auto --pristine --base-on=RELEASE_0_9_7 \
+           --pkgdir=/mer/obs/cobs/Project:KDE:Mer_Extras/oprofile \
+           --rel=0.9.7-1
 
 
 More examples:
@@ -117,7 +126,7 @@ More examples:
 Project with an upstream git and some existing packaging::
 
   git clone upstream
-  gp_setup --auto --base-on=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --ver=3.1.7-3
+  gp_setup --auto --base-on=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --rel=3.1.7-3
 
 Project with no upstream git a pristine tar and some existing packaging but no patches (using sudo as an example)::
 
@@ -131,12 +140,14 @@ ver is X.Y.Z and is conceptually an upstream version and ideally a tag.
 
 Releases are identified as X.Y.Z-R
 
-branch names
+branch names:
+
 * master
 * mer-master
 * pkg-mer
 
-tag formats
+tag formats:
+
 * <base>
 * mer-<ver>-<rel>
 * pkg-mer-<ver>-<rel>
@@ -205,6 +216,83 @@ One line:
     The filename is obtained from pristine-tar checkout
 
 
+Walkthrough for Powertop
+========================
+
+Find the upstream and clone it::
+
+ git clone git://github.com/fenrus75/powertop.git
+
+ git checkout -f v2.1.1
+ gp_setup --manual --rel=2.1.1-1
+
+At this point you are in the packaging branch. Providing a --rel lets
+gp_setup do some tagging for us.
+
+Edit yaml/spec/changes and create some packaging (we'll cheat and use philippe's)::
+
+ curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.changes
+ curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.spec
+ curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.yaml
+
+Describe in the _src file how OBS gets the source (in this case, use simple git archive to make a tar.bz2 based on the tag v2.1.1)::
+
+ echo git:powertop-v2.1.1.tar.bz2:mer-2.1.1-1 > _src
+ git add powertop.* _src
+
+Check to ensure it builds.
+
+First we must create an osc package to build the source in.
+
+Go to a suitable OBS directory with Mer_Core_i486 or similar as a repo target.
+
+Now create the package::
+  
+  osc mkpac powertop
+  cd powertop
+
+Now we're in a suitable osc directory we can setup git::
+
+ gp_re
+ osc build Mer_Core_i486 i586
+
+All good, commit::
+
+ git commit -s
+
+
+Walkthrough for adding a patch to osc
+=====================================
+
+Branch the package on the OBS::
+
+ osc branch Mer:Tools:Testing osc
+ osc co home:${USER}:branches:Mer:Tools:Testing osc
+ cd home:${USER}:branches:Mer:Tools:Testing/osc
+
+on github, fork the git repo and checkout your copy::
+
+ git clone --bare git@github.com:${USER}/osc.git .git
+ git config -f .git/config core.bare false
+
+Checkout the packaging::
+
+ gp_mkpkg
+
+Now hack on the code::
+
+ mer-0.135.1-2
+
+FIXME::Complete this
+
+
+TODO
+====
+
+[ ] Improve hack-testing. ie incorporate uncommitted changes into a build
+
+
+
 Notes
 =====
 
@@ -220,126 +308,4 @@ Sage asked if it was possible to just clone the packaging or source - it is but 
  sed -i '/fetch/s/\*/\pkg-mer/g' .git/config
  git fetch mer-tools
 
-
-
-Walkthrough for Powertop
-========================
-
-Find the upstream and clone it:
-
- git clone git://github.com/fenrus75/powertop.git
-
- git checkout -f v2.1.1
- gp_setup --manual --ver=2.1.1-1
-
-At this point you are in the packaging branch. Providing a --ver lets
-gp_setup do some tagging for us.
-
-Edit yaml/spec/changes and create some packaging (we'll cheat and use philippe's):
-
- curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.changes
- curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.spec
- curl -kOL https://github.com/philippedeswert/powertop/raw/pkg-mer/powertop.yaml
-
-Describe in the _src file how OBS gets the source (in this case, use simple git archive to make a tar.bz2 based on the tag v2.1.1)
-
- echo git:powertop-v2.1.1.tar.bz2:mer-2.1.1-1 > _src
- git add powertop.* _src
-
-Check to ensure it builds:
-
-First we must create an osc package to build the source in.
-
-Go to a suitable OBS directory with Mer_Core_i486 or similar as a repo target.
-
-Now create the package:
-  
-  osc mkpac powertop
-  cd powertop
-
-Now we're in a suitable osc directory we can setup git.
-
- gp_re
- osc build Mer_Core_i486 i586
-
-All good, commit:
- git commit -s
-
-
-Walkthrough for adding a patch to osc
-=====================================
-
-Branch the package on the OBS:
-
- osc branch Mer:Tools:Testing osc
- osc co home:${USER}:branches:Mer:Tools:Testing osc
- cd home:${USER}:branches:Mer:Tools:Testing/osc
-
-on github, fork the git repo and checkout your copy:
-
- git clone --bare git@github.com:${USER}/osc.git .git
- git config -f .git/config core.bare false
-
-Checkout the packaging
- gp_mkpkg
-
-Now hack on the code
- mer-0.135.1-2
-
-FIXME::Complete this
-
-Walkthrough upgrading a pristine tar package (sudo)
-===================================================
-
-cd home:lbt:branches:Mer:Tools:Testing
-osc branch Mer:Tools:Testing sudo
-osc co sudo
-cd sudo
-# gp_clone git@github.com:lbt/sudo.git
-# (actually this can do gh clone to ~ first too)
-git clone --no-checkout --bare git@github.com:lbt/sudo.git .git
-git config -f .git/config core.bare false
-git checkout -f pkg-mer
-gp_mkpkg 
-
-Now to update it. (# This section is gp_import_tarball)
-(cd ..; curl -O http://www.sudo.ws/sudo/dist/sudo-1.8.6p3.tar.gz)
-git checkout master
-git rm -rf *
-tar --transform 's_[^/]*/__' -xf ../sudo-1.8.6p3.tar.gz
-git add .
-git commit -sm"commit from sudo-1.8.6p3.tar.gz"
-git tag 1.8.6p3
-git checkout -b mer-1.8.6p3
-pristine-tar commit ../sudo-1.8.6p3.tar.gz  1.8.6p3
-git commit --allow-empty -m"pristine-tar-delta: Import any changes from the released tarball into the Mer source tree ready for local patches"
-git tag mer-1.8.6p3-1
-echo pristine-tar:sudo-1.8.6p3.tar.gz:mer-1.8.6p3-1
-
-git checkout pkg-mer
-
-# Hack on .yaml and .changes
-specify
-# Hack on .spec if needed
-gp_mkpkg 
-osc build Mer_Core_i486 i586
-# repeat cycle
-
-# Need to describe working on the source tree too
-
-osc ar
-osc ci
-# verify build on all arches
-
-git commit -as
-git tag pkg-mer-1.8.6p3-1
-git push --tags origin
-
-osc sr home:lbt:branches:Mer:Tools:Testing sudo Mer:Tools:Testing
-git pull request on github
-
-
-TODO
-====
-
-[ ] Improve hack-testing. ie incorporate uncommitted changes into a build
+* The tarball uses src/ as the location for git packages unless pristine-tar is in use

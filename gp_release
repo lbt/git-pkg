@@ -51,14 +51,27 @@ EOF
 
 usage() {
     cat <<EOF
-    $ME [--ver[=<version-release>]] [--base=<tag>] [--edit]
+    $ME [--rel[=<version-release>]] [--ver=<tag>] [--edit]
  
        Used to create a new release or prepare for an intermediate
        build
 
-       --ver[=<version-release>]
+       --rel is used to create a new incremental release of a package
+       when all that is changed is a patch to upstream code or
+       packaging. It does not change the 'version' of a package or the
+       main tag the package is built from.
 
-         if --ver is used then a new package version will be created.
+       --ver is used to create a new version of a package. Usually
+       this means that the <release> value is '1'. Usually this means
+       there is a new upstream code/tag. If the upstream tag is not a
+       simple version (eg it has text or underscores: 'vX_Y_Z') then
+       the --rel arg can be used to override the <version> and
+       <release> values.
+
+
+       --rel[=<version-release>]
+
+         If --rel is used then a new package release will be created.
          Updates to _src, .changes, .yaml and .spec files are
          made. Version: / Release: values and Patches: lines will be
          updated in the yaml/spec. A changelog entry is prompted for
@@ -71,14 +84,14 @@ usage() {
          HEAD when the command is run will be tagged as
          $DISTRO-<version-release> and packaging as
          pkg-$DISTRO-<version-release>. (Usually git checkout -f
-         master would be run before running $ME)
+         master would be run before running $ME --rel)
 
-       --base=<tag>
+       --ver=<basetag>
 
-         If --base is provided then it is used as the new base tag
-         from which patches are based or simply from where the tarball
-         is built. If --ver=<version>-<release> is not given then
-         <version> is assumed to be <tag> and <release> is assumed to
+         If --ver is provided then it identifies the new base tag from
+         which patches are based and from where the tarball is
+         built. If --rel=<version>-<release> is not given then
+         <version> is assumed to be <basetag> and <release> is assumed to
          be "1". A $DISTRO-master branch will be made if not present.
          This is used for a new upstream release.
 
@@ -89,18 +102,18 @@ usage() {
          edited manually. The commit/tag commands are printed for
          reference.
 
-       If --ver is not given then the packaging branch pkg-$DISTRO is
+       If --rel is not given then the packaging branch pkg-$DISTRO is
        checked out, the spec/yaml is updated by appending
        .gitcount.sha1 to the Release: value (this tries to ensure rpm
        release values increment in a manner that allow rpm upgrades to
        work).
        ADDITIONALLY: a normal gp_mkpkg is used to prepare the tarball
-       and patches when --ver is not given.
+       and patches when --rel is not given.
 
        --git-dir=<dir>
          The --git-dir option is ideal for working with a local OBS
          checkout and doing local OBS builds. It makes most sense when
-         --ver is not specified
+         --rel is not specified
          Internally it sets GIT_DIR to <dir> and GIT_WORK_TREE to cwd
 
        $DISTRO is set either in ~/.gitpkg, the GITPKG_DISTRO
@@ -116,28 +129,28 @@ do_release() {
 
     while [[ $1 ]]; do
 	case $1 in
-	    --base=*)
-		newbase=${1#*=}
-		if ! git_tag_exists $newbase; then
-		    fatal "--base must provide a valid tag. '$newbase' is not a valid tag."
+	    --ver=*)
+		newver=${1#*=}
+		if ! git_tag_exists $newver; then
+		    fatal "--ver must provide a valid tag. '$newver' is not a valid tag."
 		fi
-		# if a plain --ver is given aswell (ie without
-		# =ver-rel) that's ambiguous since --base implies a
+		# if a plain --rel is given aswell (ie without
+		# =ver-rel) that's ambiguous since --ver implies a
 		# new version
-		# so override to 'basetag' and we'll set ver=$newbase and rel=1
-		get_verrel=newbase
+		# so override to 'basetag' and we'll set ver=$newver and rel=1
+		get_verrel=newver
 		shift;;
-	    --ver )
-		# Now if --base was given, don't override from packaging
+	    --rel )
+		# Now if --ver was given, don't override from packaging
 		get_verrel=${get_verrel:-packaging}
 		shift;;
-	    --ver=* )
+	    --rel=* )
 		verrel=${1#*=}
 		if [[ $verrel =~ $verrel_regex ]]; then
 		    ver=${verrel%-*}
 		    rel=${verrel##*-}
 		else
-		    fatal "The --ver= option must provide <ver>-<rel>"
+		    fatal "The --rel= option must provide <ver>-<rel>"
 		fi
 		# if $verrel is "" then we guess it later when the packaging is present
 		shift ;;
@@ -194,14 +207,14 @@ do_release() {
 	    verrel=$ver-$rel
 	    if ! [[ $rel ]] || [[ $rel == "1" ]]; then
 		fatal "The value guessed for Release: is '$rel' and this is probably wrong.\n" \
-                    "Please specify an exact value for --ver=\n" \
+                    "Please specify an exact value for --rel=\n" \
 		    "Currently Version: $ver and Release: $oldrel"
 	    fi
 	    ;;
-	newbase )
-	    # if we have a newbase and no ver/rel then set them:
+	newver )
+	    # if we have a newver and no ver/rel then set them:
 	    if ! [[ $verrel ]]; then
-		ver=$newbase
+		ver=$newver
 		rel=1
 		verrel=$ver-$rel
 	    fi
@@ -218,9 +231,9 @@ do_release() {
     fi
 
     # If we have a new basetag ...
-    if [[ $newbase ]]; then
+    if [[ $newver ]]; then
 	oldbase=$basetag
-	basetag=$newbase
+	basetag=$newver
 	# The mer-master branch should point here now
 	echo "Reset $DISTRO-master branch to start at $basetag"
 	git branch -f $DISTRO-master $basetag
@@ -247,10 +260,10 @@ do_release() {
     if [[ $verrel ]]; then
 	sed -i -e"s/Version:.*/Version: $ver/" $pkgfile
 	sed -i -e"s/Release:.*/Release: $rel/" $pkgfile
-	# If this is a newbase then it's a new upstream release: give a
+	# If this is a newver then it's a new upstream release: give a
 	# set of changes from one ver to the next
-	if [[ $newbase ]]; then
-	    update_changes $verrel $oldbase $newbase
+	if [[ $newver ]]; then
+	    update_changes $verrel $oldbase $newver
 	else
 	    update_changes $verrel $oldpatchtag $patchtag_sha1
 	fi
