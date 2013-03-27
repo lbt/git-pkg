@@ -118,7 +118,7 @@ do_release() {
 	case $1 in
 	    --base=*)
 		newbase=${1#*=}
-		if not git_tag_exists $newbase; then
+		if ! git_tag_exists $newbase; then
 		    fatal "--base must provide a valid tag. '$newbase' is not a valid tag."
 		fi
 		# if a plain --ver is given aswell (ie without
