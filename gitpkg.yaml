@@ -2,7 +2,7 @@ Name: gitpkg
 Summary: Helps manage packaging in git
 Description: Allows the packaging to be maintained in a discrete git tree in the same
   git repo as the source
-Version: 0.0.2
+Version: 0.0.3
 Release: 1
 Group: Development
 License: GPLv2
@@ -28,5 +28,4 @@ Files:
   - '%{_libdir}/python2.7/site-packages/BlockDumper.pyc'
   - '%{_libdir}/python2.7/site-packages/BlockDumper.pyo'
   - '%{_libdir}/python2.7/site-packages/gitpkg-0.0.2-py2.7.egg-info'
-
 Patches: []

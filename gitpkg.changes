@@ -1,3 +1,9 @@
+* Fri Mar 2013 David Greaves <david@dgreaves.com> - 0.0.3-1
+- Change use of --ver, --rel and --base to be more self-explanatory. Reword docs.
+- Get the Name from packaging and rename function
+- Always add -n src/ even if not present in original %setup
+- Fix breakage in gp_release --base (now --ver) handling
+
 * Sun Mar 2013 David Greaves <david@dgreaves.com> - 0.0.2-1
 - Extensive changes: see README.rst
 - Patch and branch formats defined more rigidly
