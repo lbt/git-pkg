@@ -253,37 +253,12 @@ Now create the package::
 
 Now we're in a suitable osc directory we can setup git::
 
- gp_re
+ gp_release --git-dir=<working git dir>
  osc build Mer_Core_i486 i586
 
 All good, commit::
 
  git commit -s
-
-
-Walkthrough for adding a patch to osc
-=====================================
-
-Branch the package on the OBS::
-
- osc branch Mer:Tools:Testing osc
- osc co home:${USER}:branches:Mer:Tools:Testing osc
- cd home:${USER}:branches:Mer:Tools:Testing/osc
-
-on github, fork the git repo and checkout your copy::
-
- git clone --bare git@github.com:${USER}/osc.git .git
- git config -f .git/config core.bare false
-
-Checkout the packaging::
-
- gp_mkpkg
-
-Now hack on the code::
-
- mer-0.135.1-2
-
-FIXME::Complete this
 
 
 TODO
