@@ -172,9 +172,9 @@ use_existing() {
     [[ $pkgdir ]] || { fatal "You must supply --pkgdir when using --auto"; }
     [[ -d $pkgdir ]] || { fatal "Supplied --pkgdir '$pkgdir' is not a directory"; }
 
-
     # Determine version/release numbers
-    get_verrel_from_packaging $pkgdir
+    get_info_from_packaging $pkgdir
+    name=${name:-unnamed}
     rel=${force_rel:-${rel:-1}}
     ver=${force_ver:-${ver:-$basetag}}
     ver_pattern='^[0-9.]*$'
@@ -210,6 +210,7 @@ use_existing() {
 
     # Guess the tarball
     tarball=$(cd $pkgdir; find * -name '*t*bz2' -o -name '*t*gz' -o -name '*t*xz')
+    tarball=${tarball:-$name.tar.bz2}
     echo "Using tarball: $tarball"
 
     # If this is a pure pristine-tar with no git tree then just unpack
@@ -382,7 +383,7 @@ do_pkg() {
     done
 
     if ! [[ ${verrel} ]] && [[ $pkgdir ]]; then
-	get_verrel_from_packaging $pkgdir
+	get_info_from_packaging $pkgdir
     fi
 
     # If all goes well we'll tag current location

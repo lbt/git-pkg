@@ -11,7 +11,7 @@ ME=$(basename $0)
 
 # Input: $pkgdir
 # Output: $ver  $rel
-get_verrel_from_packaging() {
+get_info_from_packaging() {
     _pkgdir=${1:-.}
     # See if there's a yaml or a .spec
     _vrfile=$(cd $_pkgdir; find . -maxdepth 1 -name '*yaml' -print -quit)
@@ -19,6 +19,7 @@ get_verrel_from_packaging() {
     if [[ -f $_pkgdir/$_vrfile ]]; then
 	ver=$(grep Version: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
 	rel=$(grep Release: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
+	name=$(grep Name: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
 	echo "Found Version/Release: $ver-$rel in the packaging"
     fi
 }

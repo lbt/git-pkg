@@ -200,7 +200,7 @@ do_release() {
     # Get ver-rel and increment it if we need to
     case $get_verrel in
 	packaging )
-	    get_verrel_from_packaging .
+	    get_info_from_packaging .
 	    oldrel=$rel
 	    rel=$(perl -e"\$r='$rel';print ++\$r;")
 	    echo "Automagically guessed $ver-$oldrel -> $ver-$rel"
