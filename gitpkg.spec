@@ -13,7 +13,7 @@ Name:       gitpkg
 
 Summary:    Helps manage packaging in git
 Version:    0.0.3
-Release:    1
+Release:    2
 Group:      Development
 License:    GPLv2
 BuildArch:  noarch
@@ -61,12 +61,11 @@ rm -rf %{buildroot}
 %{_bindir}/gp_setup
 %{_bindir}/gp_mkpkg
 %{_datadir}/gitpkg/gp_common
-%{_libdir}/obs/service/gitpkg
-%{_libdir}/obs/service/gitpkg.service
-%{_libdir}/obs/service/gp_mkpkg
+/usr/lib/obs/service/gitpkg
+/usr/lib/obs/service/gitpkg.service
+/usr/lib/obs/service/gp_mkpkg
 %{python_sitelib}/BlockDumper.py
 %{python_sitelib}/BlockDumper.pyc
-%{python_sitelib}/BlockDumper.pyo
 %{python_sitelib}/gitpkg-0.0.2-py2.7.egg-info
 # >> files
 # << files

@@ -1,3 +1,6 @@
+* Fri Mar 2013 David Greaves <david@dgreaves.com> - 0.0.3-2
+- Set noarch, python-yaml dependency and python macros
+
 * Fri Mar 2013 David Greaves <david@dgreaves.com> - 0.0.3-1
 - Change use of --ver, --rel and --base to be more self-explanatory. Reword docs.
 - Get the Name from packaging and rename function
