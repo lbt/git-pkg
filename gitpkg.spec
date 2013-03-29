@@ -6,6 +6,9 @@
 Name:       gitpkg
 
 # >> macros
+# Magic
+%{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 # << macros
 
 Summary:    Helps manage packaging in git
@@ -13,12 +16,14 @@ Version:    0.0.3
 Release:    1
 Group:      Development
 License:    GPLv2
+BuildArch:  noarch
 Source0:    gitpkg-0.0.1.tar.bz2
 Source100:  gitpkg.yaml
 Requires:   git
 Requires:   pristine-tar
-Requires:   python
+Requires:   python-yaml
 BuildRequires:  python
+BuildRequires:  python-distribute
 
 %description
 Allows the packaging to be maintained in a discrete git tree in the same git repo as the source
@@ -59,9 +64,9 @@ rm -rf %{buildroot}
 %{_libdir}/obs/service/gitpkg
 %{_libdir}/obs/service/gitpkg.service
 %{_libdir}/obs/service/gp_mkpkg
-%{_libdir}/python2.7/site-packages/BlockDumper.py
-%{_libdir}/python2.7/site-packages/BlockDumper.pyc
-%{_libdir}/python2.7/site-packages/BlockDumper.pyo
-%{_libdir}/python2.7/site-packages/gitpkg-0.0.2-py2.7.egg-info
+%{python_sitelib}/BlockDumper.py
+%{python_sitelib}/BlockDumper.pyc
+%{python_sitelib}/BlockDumper.pyo
+%{python_sitelib}/gitpkg-0.0.2-py2.7.egg-info
 # >> files
 # << files

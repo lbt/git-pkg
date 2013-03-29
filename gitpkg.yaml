@@ -10,12 +10,14 @@ Sources:
   - gitpkg-0.0.1.tar.bz2
 PkgBR:
   - python
+  - python-distribute
 Requires:
   - git
   - pristine-tar
-  - python
+  - python-yaml
 Configure: none
 SetupOptions: -q -n src
+BuildArch: noarch
 Files:
   - '%{_bindir}/gp_release'
   - '%{_bindir}/gp_setup'
@@ -24,8 +26,8 @@ Files:
   - '%{_libdir}/obs/service/gitpkg'
   - '%{_libdir}/obs/service/gitpkg.service'
   - '%{_libdir}/obs/service/gp_mkpkg'
-  - '%{_libdir}/python2.7/site-packages/BlockDumper.py'
-  - '%{_libdir}/python2.7/site-packages/BlockDumper.pyc'
-  - '%{_libdir}/python2.7/site-packages/BlockDumper.pyo'
-  - '%{_libdir}/python2.7/site-packages/gitpkg-0.0.2-py2.7.egg-info'
+  - '%{python_sitelib}/BlockDumper.py'
+  - '%{python_sitelib}/BlockDumper.pyc'
+  - '%{python_sitelib}/BlockDumper.pyo'
+  - '%{python_sitelib}/gitpkg-0.0.2-py2.7.egg-info'
 Patches: []
