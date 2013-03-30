@@ -24,7 +24,6 @@ Requires:   pristine-tar
 Requires:   python-yaml
 Requires:   spectacle
 BuildRequires:  python
-BuildRequires:  python-distribute
 
 %description
 Allows the packaging to be maintained in a discrete git tree in the same git repo as the source
@@ -72,8 +71,7 @@ rm -rf %{buildroot}
 %{_bindir}/gp_mkpkg
 %dir %{_datadir}/gitpkg/
 %{_datadir}/gitpkg/gp_common
-%{python_sitelib}/BlockDumper.py
-%{python_sitelib}/BlockDumper.pyc
+%{python_sitelib}/BlockDumper.*
 %{python_sitelib}/gitpkg-0.0.2-py2.7.egg-info
 # >> files
 # << files
