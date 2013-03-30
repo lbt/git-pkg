@@ -73,9 +73,9 @@ if [ -z "$REPO" ]; then
   fatal "ERROR: no --repo parameter"
 fi
 
-repo_regexp="[A-Za-z0-9_]*/[A-Za-z0-9_]*"
-if [[ $REPO !~ $repo_regexp ]]; then
-    fatal "ERROR: repo is not in area/repo format"
+repo_regexp="^[A-Za-z0-9_-]*/[A-Za-z0-9_-]*$"
+if ! [[ $REPO =~ $repo_regexp ]]; then
+    fatal "ERROR: repo '$REPO'is not in area/repo format (omit .git and any http://.../ part)"
 fi
 
 case $SVC in
@@ -107,13 +107,14 @@ cd $SVC/$REPO
 
 # clone or update
 if [ -d .git ]; then
-    git remote update --prune
-    git fetch --all
-    git fetch --tags
+    git remote update --prune || fatal "git remote update failed"
+    git fetch --force --all || fatal "git fetch --all failed"
+    git fetch --force --tags || fatal "git fetch --tags failed"
 else
-    git clone -n $URL .
+    git clone -n $URL . || fatal "git clone $URL failed"
 fi
-/usr/bin/gp_mkpkg $TAG
+
+/usr/bin/gp_mkpkg $TAG || fatal "gp_mkpkg $TAG failed"
 
 if [ ! -z "$OUTDIR" ]; then
     # Move all files to OUTDIR
