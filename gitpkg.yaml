@@ -15,6 +15,7 @@ Requires:
   - git
   - pristine-tar
   - python-yaml
+  - spectacle
 Configure: none
 SetupOptions: -q -n src
 BuildArch: noarch
