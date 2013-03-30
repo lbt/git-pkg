@@ -18,7 +18,6 @@ install:
 	install -d ${OBSDIR}
 	install -m 755 gitpkg.sh ${OBSDIR}/gitpkg
 	install -m 755 gitpkg.service ${OBSDIR}
-	ln -s /usr/bin/gp_mkpkg ${OBSDIR}/
 
 	# python parts
 	$(PYTHON) setup.py install --root=${DESTDIR} --prefix=${PREFIX}

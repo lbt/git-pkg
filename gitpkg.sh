@@ -29,6 +29,12 @@ Examples:
 EOF
 }
 
+fatal() {
+    usage
+    echo $@
+    exit 1
+}
+
 while test $# -gt 0; do
   case $1 in
     *-service)
@@ -61,14 +67,15 @@ while test $# -gt 0; do
 done
 
 if [ -z "$SVC" ]; then
-  usage
-  echo "ERROR: no --service parameter ($SERVICES)"
-  exit 1
+  fatal "ERROR: no --service parameter ($SERVICES)"
 fi
 if [ -z "$REPO" ]; then
-  usage
-  echo "ERROR: no --repo parameter"
-  exit 1
+  fatal "ERROR: no --repo parameter"
+fi
+
+repo_regexp="[A-Za-z0-9_]*/[A-Za-z0-9_]*"
+if [[ $REPO !~ $repo_regexp ]]; then
+    fatal "ERROR: repo is not in area/repo format"
 fi
 
 case $SVC in
@@ -106,7 +113,7 @@ if [ -d .git ]; then
 else
     git clone -n $URL .
 fi
-/usr/lib/obs/service/gp_mkpkg $TAG
+/usr/bin/gp_mkpkg $TAG
 
 if [ ! -z "$OUTDIR" ]; then
     # Move all files to OUTDIR
