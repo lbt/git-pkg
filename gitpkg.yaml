@@ -23,10 +23,19 @@ Files:
   - '%{_bindir}/gp_setup'
   - '%{_bindir}/gp_mkpkg'
   - '%{_datadir}/gitpkg/gp_common'
-  - '/usr/lib/obs/service/gitpkg'
-  - '/usr/lib/obs/service/gitpkg.service'
-  - '/usr/lib/obs/service/gp_mkpkg'
   - '%{python_sitelib}/BlockDumper.py'
   - '%{python_sitelib}/BlockDumper.pyc'
   - '%{python_sitelib}/gitpkg-0.0.2-py2.7.egg-info'
 Patches: []
+
+SubPackages:
+  - Name: obs-service-gitpkg
+    AsWholeName: True
+    Summary: "An OBS source service: Uses gitpkg to retrieve source"
+    Description: Uses gitpkg to retrieve source 
+    Group: Development
+    Requires:
+      - gitpkg
+    Files:
+      - '/usr/lib/obs/service/gitpkg'
+      - '/usr/lib/obs/service/gitpkg.service'

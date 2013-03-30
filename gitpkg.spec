@@ -28,6 +28,15 @@ BuildRequires:  python-distribute
 %description
 Allows the packaging to be maintained in a discrete git tree in the same git repo as the source
 
+%package -n obs-service-gitpkg
+Summary:    An OBS source service: Uses gitpkg to retrieve source
+Group:      Development
+Requires:   %{name} = %{version}-%{release}
+Requires:   gitpkg
+
+%description -n obs-service-gitpkg
+Uses gitpkg to retrieve source
+
 
 %prep
 %setup -q -n src
@@ -61,11 +70,15 @@ rm -rf %{buildroot}
 %{_bindir}/gp_setup
 %{_bindir}/gp_mkpkg
 %{_datadir}/gitpkg/gp_common
-/usr/lib/obs/service/gitpkg
-/usr/lib/obs/service/gitpkg.service
-/usr/lib/obs/service/gp_mkpkg
 %{python_sitelib}/BlockDumper.py
 %{python_sitelib}/BlockDumper.pyc
 %{python_sitelib}/gitpkg-0.0.2-py2.7.egg-info
 # >> files
 # << files
+
+%files -n obs-service-gitpkg
+%defattr(-,root,root,-)
+/usr/lib/obs/service/gitpkg
+/usr/lib/obs/service/gitpkg.service
+# >> files obs-service-gitpkg
+# << files obs-service-gitpkg
