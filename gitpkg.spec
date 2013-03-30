@@ -12,8 +12,8 @@ Name:       gitpkg
 # << macros
 
 Summary:    Helps manage packaging in git
-Version:    0.0.3
-Release:    2
+Version:    0.0.4
+Release:    1
 Group:      Development
 License:    GPLv2
 BuildArch:  noarch
@@ -79,6 +79,7 @@ rm -rf %{buildroot}
 
 %files -n obs-service-gitpkg
 %defattr(-,root,root,-)
+%dir /usr/lib/obs/
 %dir /usr/lib/obs/service/
 /usr/lib/obs/service/gitpkg
 /usr/lib/obs/service/gitpkg.service

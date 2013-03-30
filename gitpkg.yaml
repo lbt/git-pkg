@@ -2,8 +2,8 @@ Name: gitpkg
 Summary: Helps manage packaging in git
 Description: Allows the packaging to be maintained in a discrete git tree in the same
   git repo as the source
-Version: 0.0.3
-Release: 2
+Version: 0.0.4
+Release: 1
 Group: Development
 License: GPLv2
 Sources:
@@ -28,16 +28,16 @@ Files:
   - '%{python_sitelib}/BlockDumper.pyc'
   - '%{python_sitelib}/gitpkg-0.0.2-py2.7.egg-info'
 Patches: []
-
 SubPackages:
   - Name: obs-service-gitpkg
-    AsWholeName: True
-    Summary: "An OBS source service: Uses gitpkg to retrieve source"
-    Description: Uses gitpkg to retrieve source 
+    AsWholeName: true
+    Summary: 'An OBS source service: Uses gitpkg to retrieve source'
+    Description: Uses gitpkg to retrieve source
     Group: Development
     Requires:
       - gitpkg
     Files:
+      - '%dir /usr/lib/obs/'
       - '%dir /usr/lib/obs/service/'
-      - '/usr/lib/obs/service/gitpkg'
-      - '/usr/lib/obs/service/gitpkg.service'
+      - /usr/lib/obs/service/gitpkg
+      - /usr/lib/obs/service/gitpkg.service

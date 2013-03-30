@@ -1,3 +1,6 @@
+* Sat Mar 2013 David Greaves <david@dgreaves.com> - 0.0.4-1
+- Use gitpkg and verify REPO format
+
 * Fri Mar 2013 David Greaves <david@dgreaves.com> - 0.0.3-2
 - Set noarch, python-yaml dependency and python macros
 
