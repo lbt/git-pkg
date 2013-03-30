@@ -69,6 +69,7 @@ rm -rf %{buildroot}
 %{_bindir}/gp_release
 %{_bindir}/gp_setup
 %{_bindir}/gp_mkpkg
+%dir %{_datadir}/gitpkg/
 %{_datadir}/gitpkg/gp_common
 %{python_sitelib}/BlockDumper.py
 %{python_sitelib}/BlockDumper.pyc
@@ -78,6 +79,7 @@ rm -rf %{buildroot}
 
 %files -n obs-service-gitpkg
 %defattr(-,root,root,-)
+%dir /usr/lib/obs/service/
 /usr/lib/obs/service/gitpkg
 /usr/lib/obs/service/gitpkg.service
 # >> files obs-service-gitpkg
