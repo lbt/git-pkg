@@ -210,26 +210,33 @@ def apply_patches_to_spec(args, p, specfilename):
         if prep_match.search(line):
             break
 
-    # Maybe found a %setup
-    maybe_setup = spec_f.readline()
-
-    if not re.search(r'^%setup',maybe_setup):
-        print "WARNING: No %setup following %prep - %patch macros are almost certainly wrong\n"
-    elif args.setup_src:
-        print "Adjusting %setup since git-pkg unpacks to src/\n"
-        spec_new.extend("# Adjusting %%setup since git-pkg unpacks to src/\n")
-        spec_new.extend("# %s" % re.sub(r'%', '%%', maybe_setup))
-        maybe_setup = re.sub(r'(-n [^ ]*)?$', ' -n src\n', maybe_setup)
-
-    # Output the (hopefully %setup) line and all %patch lines
-    spec_new.extend(maybe_setup)
-    spec_new.extend(p.spec_patches)
-
     # Any remaining spec content, skipping %patch lines
+    # and updating when %setup is found
+    done_setup = False
     while line:
         line = spec_f.readline()
-        if not patch_match.search(line):
-            spec_new.extend(line)
+        if patch_match.search(line):
+            continue
+
+        if re.search(r'^%setup', line):
+            if done_setup:
+                print "WARNING: multiple %setups found - please check patches are in the right place in spec"
+            else:
+                done_setup = True
+                if args.setup_src:
+                    print "Adjusting %setup since git-pkg unpacks to src/"
+                    spec_new.extend("# Adjusting %%setup since git-pkg unpacks to src/\n")
+                    spec_new.extend("# %s" % re.sub(r'%', '%%', line))
+                    print line.strip()
+                    line = re.sub(r'^%setup(.*)(\s-n\s+\S*)?(.*)$', r'%setup\1 -n src\3', line)
+                    print "converted to"
+                    print line.strip()
+                # Now output modified or orig %setup and any patches
+                spec_new.extend(line)
+                spec_new.extend(p.spec_patches)
+                continue
+
+        spec_new.extend(line)
 
     spec_f.seek(0)
     spec_f.writelines(spec_new)
