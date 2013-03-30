@@ -78,13 +78,18 @@ if ! [[ $REPO =~ $repo_regexp ]]; then
     fatal "ERROR: repo '$REPO'is not in area/repo format (omit .git and any http://.../ part)"
 fi
 
-case $SVC in
+tag_regexp="^[A-Za-z0-9_.-]*$"
+if ! [[ $TAG =~ $tag_regexp ]]; then
+    fatal "ERROR: repo '$TAG'is not valid (must match '$tag_regexp')"
+fi
+
+case "$SVC" in
     github)
-        URL=git://github.com/${REPO}.git ;;
+        URL="git://github.com/${REPO}.git" ;;
     gitorious)
-        URL=git://gitorious.org/${REPO}.git ;;
+        URL="git://gitorious.org/${REPO}.git" ;;
     mer)
-        URL=http://gitweb.merproject.org/gitweb/${REPO}.git/ ;;
+        URL="http://gitweb.merproject.org/gitweb/${REPO}.git/" ;;
     *)
         echo "Sorry, git service $SVC is not whitelisted. please contact lbt in #mer"
         exit 1 ;;
@@ -111,14 +116,14 @@ if [ -d .git ]; then
     git fetch --force --all || fatal "git fetch --all failed"
     git fetch --force --tags || fatal "git fetch --tags failed"
 else
-    git clone -n $URL . || fatal "git clone $URL failed"
+    git clone -n "$URL" . || fatal "git clone $URL failed"
 fi
 
-/usr/bin/gp_mkpkg $TAG || fatal "gp_mkpkg $TAG failed"
+/usr/bin/gp_mkpkg "$TAG" || fatal "gp_mkpkg $TAG failed"
 
 if [ ! -z "$OUTDIR" ]; then
     # Move all files to OUTDIR
-    find . -mindepth 1 -maxdepth 1 -not -name .git -print0 | xargs -0 -I files mv files $OUTDIR
+    find . -mindepth 1 -maxdepth 1 -not -name .git -print0 | xargs -0 -I files mv files "$OUTDIR"
 fi
 
 exit 0
