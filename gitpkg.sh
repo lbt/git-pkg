@@ -119,7 +119,7 @@ else
     git clone -n "$URL" . || fatal "git clone $URL failed"
 fi
 
-/usr/bin/gp_mkpkg "$TAG" || fatal "gp_mkpkg $TAG failed"
+/usr/bin/gp_mkpkg --build "$TAG" || fatal "gp_mkpkg $TAG failed"
 
 if [ ! -z "$OUTDIR" ]; then
     # Move all files to OUTDIR

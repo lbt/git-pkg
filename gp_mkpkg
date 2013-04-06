@@ -273,6 +273,10 @@ def apply_patches(args, p):
 
 parser = argparse.ArgumentParser(description='gitpkg build preparation')
 
+parser.add_argument('-b', '--build',
+                    dest='build', action='store_true',
+                    help="Just prepare tarballs/patches for building - don't modify spec/yaml from git")
+
 parser.add_argument('-n', '--no-checkout',
                     dest='force_checkout', action='store_false',
                     help="Don't force checkout the latest pkg branch (useful if working on packaging)")
@@ -315,7 +319,8 @@ if args.git_dir:
 # Checkout the tag (default is the hardcoded pkg_branch)
 checkout_packaging_branch(args.tag, args.force_checkout)
 patches=prepare_tarball_and_patches(args)
-apply_patches(args, patches)
-#
-if 'GIT_INDEX_FILE' in os.environ:
+if not args.build:
+    apply_patches(args, patches)
+
+if args.git_dir:
     os.remove(os.environ['GIT_INDEX_FILE'])
