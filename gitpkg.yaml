@@ -15,6 +15,9 @@ Requires:
   - pristine-tar
   - python-yaml
   - spectacle
+  - grep
+  - coreutils
+  - findutils
 Configure: none
 SetupOptions: -q -n src
 BuildArch: noarch
