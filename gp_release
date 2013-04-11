@@ -244,9 +244,6 @@ do_release() {
     if [[ $newver ]]; then
 	oldbase=$basetag
 	basetag=$newver
-	# The mer-master branch should point here now
-	echo "Reset $DISTRO-master branch to start at $basetag"
-	git branch -f $DISTRO-master $basetag
     fi
 
     # if basetag and patchtag have the same sha1 then there are no
@@ -255,6 +252,10 @@ do_release() {
 	echo ${type}:${tarball}:${basetag} > _src
     else
 	echo ${type}:${tarball}:${basetag}:${patchtag} > _src
+	# There are patches so we make mer-master branch and point it
+	# here
+	echo "Reset $DISTRO-master branch to start at $basetag"
+	git branch -f $DISTRO-master $basetag
     fi
 
     # Find the yaml or spec (or abort)
