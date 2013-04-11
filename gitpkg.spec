@@ -12,7 +12,7 @@ Name:       gitpkg
 # << macros
 
 Summary:    Helps manage packaging in git
-Version:    0.0.5
+Version:    0.0.6
 Release:    1
 Group:      Development
 License:    GPLv2
@@ -23,6 +23,9 @@ Requires:   git
 Requires:   pristine-tar
 Requires:   python-yaml
 Requires:   spectacle
+Requires:   grep
+Requires:   coreutils
+Requires:   findutils
 BuildRequires:  python
 
 %description
