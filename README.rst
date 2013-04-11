@@ -8,7 +8,7 @@ New release of a working package that needs a patch? use --rel:
 * Checkout the mer-master branch
 * Commit your changes/patches
 * gp_release --rel=<Ver-Rel>
-* git push --tags origin master mer-pkg
+* git push --tags origin master pkg-mer
 
 Want to work on the packaging? Same approach but do --edit and then commit
 your packaging changes:
@@ -38,7 +38,7 @@ New upstream version? use --ver:
 
 * Checkout the mer-master branch or pull the upstream and tags
 * gp_release --ver=<release-tag>
-* git push --tags origin master mer-pkg
+* git push --tags origin master pkg-mer
 
 Basically gp_release is for managing Version: and Release: and adding patches; gp_setup is for setting up new package repositories. Other tools are used by the OBS to checkout the code for building.
 
