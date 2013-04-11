@@ -247,7 +247,9 @@ do_release() {
     # build and we just use a sha1. Otherwise make a tag
     if [[ $verrel ]]; then
 	patchtag=${DISTRO}-$verrel
-	git_tag_cleanly $patchtag $patchtag_sha1
+	if ! git_tag_exists $patchtag; then
+	    git_tag_cleanly $patchtag $patchtag_sha1
+	fi
     else
 	patchtag=$patchtag_sha1
     fi
@@ -266,8 +268,8 @@ do_release() {
 	echo ${type}:${tarball}:${basetag}:${patchtag} > _src
 	# There are patches so we make mer-master branch and point it
 	# here
-	echo "Reset $DISTRO-master branch to start at $basetag"
-	git branch -f $DISTRO-master $basetag
+	echo "Reset $DISTRO-master branch to start at $patchtag"
+	git branch -f $DISTRO-master $patchtag
     fi
 
     # Find the yaml or spec (or abort)
