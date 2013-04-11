@@ -7,12 +7,11 @@
 
 assert_not_on_pkg_branch() {
     if [[ $initial_branch == "pkg-$DISTRO" ]]; then
-	cat <<EOF
+	fatal <<EOF
 $ME must not be run from the pkg-$DISTRO branch. Maybe
 git checkout -f master
 
 EOF
-	exit 1
     fi
 }
 
@@ -51,7 +50,7 @@ EOF
     fi
 
     sed -i '/^#### Relevant gitlog/,/^#### this line will/d' $newchanges
-    mv $newchanges $changes || exit 1
+    mv $newchanges $changes || fatal "Can't update changes file"
 }
 
 usage() {
@@ -328,7 +327,7 @@ EOF
 	git log ${oldpatchtag}..$patchtag_sha1 --oneline | sed -e 's/^/   /' >> $newchanges
 	echo >> $newchanges
 	cat *.changes >> $newchanges
-	mv $newchanges $changes || exit 1
+	mv $newchanges $changes || fatal "Can't update changes file"
 
         # All done, use gp_mkpkg to update patch lists in yaml/spec etc
 	gp_mkpkg --no-checkout
