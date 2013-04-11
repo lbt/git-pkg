@@ -35,24 +35,6 @@ confirm_continue() {
     read dummy
 }
 
-git_tag_cleanly() {
-    git tag $1
-    tag_cleanup_list+=" $1"
-}
-
-cleanup(){
-    echo "Attempting to switch back to $initial_branch in git"
-    git checkout -f $initial_branch
-    echo "cleaning up tags: $tag_cleanup_list"
-    for tag in $tag_cleanup_list; do
-	git tag -d $tag
-    done
-    echo "cleaning up branches: $branch_cleanup_list"
-    for branch in $branch_cleanup_list; do
-	git branch -D $branch
-    done
-}
-
 unpack_tarball() {
     rm -rf *
     case $1 in
