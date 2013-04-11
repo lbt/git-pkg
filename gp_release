@@ -45,7 +45,7 @@ EOF
     echo "#### this line will be removed" >> $newchanges
     cat *.changes >> $newchanges
     ${EDITOR:-vi} $newchanges || fatal "EDITOR not set and vi not available"
-    sed -i '/^### Relevant gitlog/,/^### this line will/d' $newchanges
+    sed -i '/^#### Relevant gitlog/,/^#### this line will/d' $newchanges
     mv $newchanges $changes || exit 1
 }
 
