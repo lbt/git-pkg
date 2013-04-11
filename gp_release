@@ -60,10 +60,10 @@ usage() {
  
        Used to create a new release or prepare for an intermediate
        build. It is used to update the packaging by modifying the
-       _src, .changes, .yaml and .spec files. Version: & Release:
-       values and patch lines will be updated in the yaml/spec. A
-       changelog entry is prompted for (using git log as a base) and
-       the git repo will be tagged.
+       _src, .changes, .yaml and .spec files.
+       Version: and Release: values and patch lines will be updated in
+       the yaml/spec. A changelog entry is prompted for (using git log
+       as a base) and the git repo will be tagged.
 
        Normal usage is to update git; possibly to a new upstream or
        local release point, apply or rebase any patches and run as
