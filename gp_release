@@ -294,13 +294,12 @@ When you are done, commit and tag the changes:
 
 git commit -am"Release $patchtag"
 git tag pkg-$patchtag
-git checkout master
+git checkout $initial_branch
 EOF
-	    # Don't try to switch back to original branch
-	    trap - EXIT
 	else
 	    git commit -am"Release $patchtag"
 	    git_tag_cleanly pkg-$patchtag
+	    git checkout $initial_branch
 	fi
     else
 	sha1=$(git rev-parse --short $patchtag_sha1)
@@ -322,9 +321,9 @@ EOF
 	cat <<EOF
 The tarball and patches have been prepared for building.
 EOF
-	# Don't try to switch back to original branch
-	trap - EXIT
     fi
 }
 
 do_release $*
+# Don't try to undo all tags/changes
+trap - EXIT
