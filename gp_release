@@ -244,9 +244,10 @@ do_release() {
     # patchtag should be ${DISTRO}-$ver-$rel
 
     # If we're not given a --ver or a --rel then this is a trial
-    # build and we just use a sha1
+    # build and we just use a sha1. Otherwise make a tag
     if [[ $verrel ]]; then
 	patchtag=${DISTRO}-$verrel
+	git_tag_cleanly $patchtag $patchtag_sha1
     else
 	patchtag=$patchtag_sha1
     fi
@@ -290,8 +291,6 @@ do_release() {
 	else
 	    update_changes $verrel $oldpatchtag $patchtag_sha1
 	fi
-        # We need to tag source before running gp_mkpkg
-	git_tag_cleanly $patchtag $patchtag_sha1
 
         # All done, use gp_mkpkg to update patch lists in yaml/spec etc
 	gp_mkpkg --no-tarball --no-checkout
