@@ -277,7 +277,7 @@ do_release() {
 	    update_changes $verrel $oldpatchtag $patchtag_sha1
 	fi
         # We need to tag source before running gp_mkpkg
-	git tag $patchtag $patchtag_sha1
+	git_tag_cleanly $patchtag $patchtag_sha1
 
         # All done, use gp_mkpkg to update patch lists in yaml/spec etc
 	gp_mkpkg --no-tarball --no-checkout
@@ -300,7 +300,7 @@ EOF
 	    trap - EXIT
 	else
 	    git commit -am"Release $patchtag"
-	    git tag pkg-$patchtag
+	    git_tag_cleanly pkg-$patchtag
 	fi
     else
 	sha1=$(git rev-parse --short $patchtag_sha1)
