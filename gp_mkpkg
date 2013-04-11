@@ -137,6 +137,9 @@ def prepare_tarball_and_patches(args):
                     [ "/usr/bin/pristine-tar", "checkout", tarball],
                     shell=False)
 
+            # Prevent pristine-tar from altering the %setup line
+            args.setup_src = False
+
         else:
             raise Exception("_src storage %s not recognised" % vcs)
 
