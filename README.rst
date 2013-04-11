@@ -29,10 +29,10 @@ Need to setup a new package?
 * Clone upstream
 * Find the right tag and see if a pristine-tar should also be used
 * Got some good packaging from OBS? Use --auto
-* gp_setup --auto --pristine --base-on=RELEASE_0_9_7 --pkgdir=<good packaging> --rel=0.9.7-1
+* gp_setup --auto --pristine --base-on=RELEASE_0_9_7 --pkgdir=<good packaging> --ver=0.9.7-1
 otherwise:
 
-* gp_setup --manual --pkgdir=<rough packaging> --rel=0.9.7-1
+* gp_setup --manual --pkgdir=<rough packaging> --ver=0.9.7-1
 
 New upstream version? use --ver:
 
@@ -118,7 +118,7 @@ The command then is::
 
   gp_setup --auto --pristine --base-on=RELEASE_0_9_7 \
            --pkgdir=/mer/obs/cobs/Project:KDE:Mer_Extras/oprofile \
-           --rel=0.9.7-1
+           --ver=0.9.7-1
 
 
 More examples:
@@ -126,7 +126,7 @@ More examples:
 Project with an upstream git and some existing packaging::
 
   git clone upstream
-  gp_setup --auto --base-on=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --rel=3.1.7-3
+  gp_setup --auto --base-on=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --ver=3.1.7-3
 
 Project with no upstream git a pristine tar and some existing packaging but no patches (using sudo as an example)::
 
@@ -224,7 +224,7 @@ Find the upstream and clone it::
  git clone git://github.com/fenrus75/powertop.git
 
  git checkout -f v2.1.1
- gp_setup --manual --rel=2.1.1-1
+ gp_setup --manual --ver=2.1.1-1
 
 At this point you are in the packaging branch. Providing a --rel lets
 gp_setup do some tagging for us.
