@@ -56,10 +56,24 @@ EOF
 
 usage() {
     cat <<EOF
-    $ME [--rel[=<version-release>]] [--ver=<tag>] [--edit]
+    $ME [--rel[=<version-release>]] [--ver=<tag>] [--edit] [--git-dir=<path>]
+
  
        Used to create a new release or prepare for an intermediate
-       build
+       build. It is used to update the packaging by modifying the
+       _src, .changes, .yaml and .spec files. Version: & Release:
+       values and patch lines will be updated in the yaml/spec. A
+       changelog entry is prompted for (using git log as a base) and
+       the git repo will be tagged.
+
+       Normal usage is to update git; possibly to a new upstream or
+       local release point, apply or rebase any patches and run as
+       $ME --ver/--rel
+
+       An alternative use is to *not* specify --ver or --rel but to
+       use --git-dir; this will create a ready-to-build set of
+       patches/tarballs (FIXME: it has the unwanted side-effect of
+       changing the checkout state of <path>)
 
        --rel is used to create a new incremental release of a package
        when all that is changed is a patch to upstream code or
@@ -70,17 +84,13 @@ usage() {
        this means that the <release> value is '1'. Usually this means
        there is a new upstream code/tag. If the upstream tag is not a
        simple version (eg it has text or underscores: 'vX_Y_Z') then
-       the --rel arg can be used to override the <version> and
-       <release> values.
+       the extended form of the --rel arg can be used to override the
+       <version> and <release> values.
 
 
        --rel[=<version-release>]
 
          If --rel is used then a new package release will be created.
-         Updates to _src, .changes, .yaml and .spec files are
-         made. Version: / Release: values and Patches: lines will be
-         updated in the yaml/spec. A changelog entry is prompted for
-         (using git log as a base) and the git repo will be tagged.
 
          If <version-release> is not specified then it is guessed from
          the packaging and uses perls string increment on
@@ -234,13 +244,15 @@ do_release() {
     # basetag should be ${DISTRO}-$ver
     # patchtag should be ${DISTRO}-$ver-$rel
 
+    # If we're not given a --ver or a --rel then this is a trial
+    # build and we just use a sha1
     if [[ $verrel ]]; then
 	patchtag=${DISTRO}-$verrel
     else
 	patchtag=$patchtag_sha1
     fi
 
-    # If we have a new basetag ...
+    # If --ver was used to set a new <basetag> then do so
     if [[ $newver ]]; then
 	oldbase=$basetag
 	basetag=$newver
@@ -267,6 +279,8 @@ do_release() {
 	fatal "No spec or yaml files found"
     fi
 
+    # Update the version/release, the .changes and the list of patches
+    # in the packaging
     if [[ $verrel ]]; then
 	sed -i -e"s/Version:.*/Version: $ver/" $pkgfile
 	sed -i -e"s/Release:.*/Release: $rel/" $pkgfile
