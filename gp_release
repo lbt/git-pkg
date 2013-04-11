@@ -191,7 +191,8 @@ do_release() {
     save_initial_branch
     assert_not_on_pkg_branch
 
-    # store current git postion
+    # store current git postion as we'll make patches to here from the
+    # basetag. If they turn out to be the same ... no patches
     patchtag_sha1=$(git rev-parse HEAD)
     
     trap cleanup EXIT
@@ -221,8 +222,12 @@ do_release() {
 	    ;;
     esac
 
-    # Update _src
+    # Update from _src
     IFS=: read type tarball basetag oldpatchtag rest < _src
+
+    # TODO: verify tarball basetag oldpatchtag are sane
+    # basetag should be ${DISTRO}-$ver
+    # patchtag should be ${DISTRO}-$ver-$rel
 
     if [[ $verrel ]]; then
 	patchtag=${DISTRO}-$verrel
@@ -240,10 +245,9 @@ do_release() {
     fi
 
     # if basetag and patchtag have the same sha1 then there are no
-    # patches to package. Set patchtag empty to indicate this.
+    # patches to package.
     if [[ $(git rev-parse $basetag) == $(git rev-parse $patchtag) ]]; then
 	echo ${type}:${tarball}:${basetag} > _src
-	patchtag=
     else
 	echo ${type}:${tarball}:${basetag}:${patchtag} > _src
     fi
@@ -285,6 +289,7 @@ When you are done, commit and tag the changes:
 
 git commit -am"Release $patchtag"
 git tag pkg-$patchtag
+git checkout master
 EOF
 	    # Don't try to switch back to original branch
 	    trap - EXIT
