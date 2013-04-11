@@ -44,7 +44,12 @@ EOF
     git log $tag1..$tag2  >> $newchanges
     echo "#### this line will be removed" >> $newchanges
     cat *.changes >> $newchanges
+    cp $newchanges $newchanges.pre-edit
     ${EDITOR:-vi} $newchanges || fatal "EDITOR not set and vi not available"
+    if diff --report-identical-files $newchanges $newchanges.pre-edit > /dev/null; then
+	fatal "No changes entered, aborting"
+    fi
+
     sed -i '/^#### Relevant gitlog/,/^#### this line will/d' $newchanges
     mv $newchanges $changes || exit 1
 }
