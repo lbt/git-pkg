@@ -69,3 +69,6 @@ fatal() {
     echo "$@"
     exit 1
 }
+
+export GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-$(git config user.email)}
+export GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-$(git config user.email)}
