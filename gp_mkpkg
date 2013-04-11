@@ -143,7 +143,7 @@ def prepare_tarball_and_patches(args):
         # If a tag range was specified, create patches
         # -M is --find-renames but that's not available on suse 11.4
         if tag2:
-            patches = git('format-patch', '-M', '--binary', '--no-renames',
+            patches = git('format-patch', '-M', '--binary', '--no-renames', '--ignore-submodules',
                     '-N', '--no-numbered', '..'.join((tag1, tag2))).splitlines()
 
             count = 1
