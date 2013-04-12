@@ -51,6 +51,8 @@ EOF
 
     sed -i '/^#### Relevant gitlog/,/^#### this line will/d' $newchanges
     mv $newchanges $changes || fatal "Can't update changes file"
+    # Tidy up emacs backup and old files
+    rm -f $newchanges.pre-edit $newchanges~
 }
 
 usage() {
