@@ -308,7 +308,7 @@ use_existing() {
     echo for _src
 
     # and a reminder not to bitch *too* much
-    echo "gp_setup --existing isn't thoroughly tested - please fix and/or report any bugs you find"
+    echo "gp_setup --auto isn't thoroughly tested - please fix and/or report any bugs you find"
 }
 
 usage_pkg(){
