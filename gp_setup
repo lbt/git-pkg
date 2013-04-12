@@ -245,6 +245,7 @@ use_existing() {
 		read dummy
 	    fi
 	fi
+	git add --all . # Ensure we get any added/removed files too
 	git commit -q -am"$(basename $patch .patch)"
 	have_patches=1
     done
