@@ -206,10 +206,11 @@ use_existing() {
     tarball=${tarball:-$name.tar.bz2}
     echo "Using tarball: $tarball"
 
-    # If this is a pure pristine-tar with no git tree then just unpack
-    # the tarball as a starting point
-    if [[ $gp_type == "pristine-tar" && $unpack ]] ; then
-	echo "Pristine tar : Unpacking tarball as initial commit"
+    # If this is an unpack then it is pristine-tar with no
+    # git tree so unpack the tarball as a starting point
+    if [[ $unpack ]] ; then
+	echo "Unpack so setting pristine-tar : Unpacking tarball as initial commit"
+	gp_type="pristine-tar"
 	unpack_tarball $pkgdir/$tarball
 	git add .
 	git commit -q -m"Initial commit from $tarball"
