@@ -12,7 +12,7 @@ Name:       gitpkg
 # << macros
 
 Summary:    Helps manage packaging in git
-Version:    0.0.6
+Version:    0.0.7
 Release:    1
 Group:      Development
 License:    GPLv2

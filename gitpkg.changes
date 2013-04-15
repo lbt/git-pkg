@@ -1,3 +1,8 @@
+* Mon Apr 2013 David Greaves <david@dgreaves.com> - 0.0.7-1
+- Force upack to be pristine tar
+- Document the --pristine flag
+- Don't miss added/removed files when applying patches
+
 * Thu Apr 2013 David Greaves <david@dgreaves.com> - 0.0.6-1
 - Improve error reports and allow usage() from fatal
 - Improve comments and docs
