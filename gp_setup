@@ -258,7 +258,8 @@ use_existing() {
 	    fi
 	fi
 	git add --all . # Ensure we get any added/removed files too
-	git commit -q -am"$(basename $patch .patch)"
+	# Use the filename as a comment - remove any initial '0003-' numbering
+	git commit -q -am"$(basename $patch .patch | sed 's/^[0-9]*-//')"
 	have_patches=1
     done
 
