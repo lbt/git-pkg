@@ -17,9 +17,9 @@ get_info_from_packaging() {
     _vrfile=$(cd $_pkgdir; find . -maxdepth 1 -name '*yaml' -print -quit)
     _vrfile=${vrfile:-$(cd $_pkgdir; find . -maxdepth 1 -name '*spec' -print -quit)}
     if [[ -f $_pkgdir/$_vrfile ]]; then
-	ver=$(grep Version: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
-	rel=$(grep Release: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
-	name=$(grep Name: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d ' ')
+	ver=$(grep Version: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
+	rel=$(grep Release: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
+	name=$(grep Name: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
 	echo "Found Version/Release: $ver-$rel in the packaging"
     fi
 }
