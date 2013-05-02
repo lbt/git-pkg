@@ -197,6 +197,11 @@ use_existing() {
 	fatal "gp_setup doesn't support packaging with >1 .spec or .yaml file"
     fi
 
+    # Without spec file there isn't packaging.
+    if [[ "$numspec" -eq "0" ]]; then
+	fatal "No spec file found from '$pkgdir/'"
+    fi
+
     # ... and record it
     specfile=$(cd $pkgdir; ls *.spec 2>/dev/null)
     yamlfile=$(cd $pkgdir; ls *.yaml 2>/dev/null)
