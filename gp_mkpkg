@@ -226,12 +226,15 @@ def apply_patches_to_spec(args, p, specfilename):
                 print "WARNING: multiple %setups found - please check patches are in the right place in spec"
             else:
                 done_setup = True
-                if args.setup_src:
-                    print "Adjusting %setup since git-pkg unpacks to src/"
+                if args.setup_src and not re.search(r'-n src(/s+.)?', line):
+                    print "Adjusting %setup since git-pkg unpacks to src/ and there's no -n src in %setup"
                     spec_new.extend("# Adjusting %%setup since git-pkg unpacks to src/\n")
                     spec_new.extend("# %s" % re.sub(r'%', '%%', line))
                     print line.strip()
-                    line = re.sub(r'^%setup(.*)(\s-n\s+\S*)?(.*)$', r'%setup\1 -n src\3', line)
+                    line,c = re.subn(r'-n\s*\S*', r'-n src', line)
+                    if c == 0:
+                        line += " -n src"
+                     
                     print "converted to"
                     print line.strip()
                 # Now output modified or orig %setup and any patches
