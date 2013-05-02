@@ -41,7 +41,9 @@ require_clean_work_tree() {
     fi
 
     # Disallow uncommitted changes in the index
-    if ! git diff-index --cached --quiet HEAD --ignore-submodules --
+    # If git log -1 returns != 0 then git tree doesn't have any commits so we hide errors.
+    # FIXME: This probably doesn't work as expcted.
+    if git log -1 &> /dev/null && ! git diff-index --cached --quiet HEAD --ignore-submodules --
     then
         echo >&2 "cannot $1: your index contains uncommitted changes."
         git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
