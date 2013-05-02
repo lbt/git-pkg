@@ -71,6 +71,9 @@ git_tag_cleanly() {
 }
 
 cleanup(){
+    # If there is no .git directory there is nothing to cleanup.
+    [[ -d .git ]] || return
+
     echo "Attempting to switch back to $initial_branch in git"
     git checkout -f $initial_branch
     if [[ $tag_cleanup_list ]] ; then
