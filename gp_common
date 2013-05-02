@@ -61,6 +61,9 @@ count_commits() {
 
 # Sets global initial_branch
 save_initial_branch() {
+    # No .git no branches.
+    [[ -d .git ]] || return
+
     initial_branch=$(git symbolic-ref HEAD)
     initial_branch=${initial_branch##refs/heads/}
 }
