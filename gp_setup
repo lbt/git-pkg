@@ -234,7 +234,7 @@ use_existing() {
     # 3. Commit any deltas (empty if needed)
     # 4. Ready for patches
     if [[ $gp_type == "pristine-tar" ]] ; then
-	echo "Pristine tar : removing all files and unpacking tarball to record any delta to $basetag"
+	echo "Pristine tar: removing all files and unpacking tarball to record any delta to $basetag"
 	pristine-tar commit $pkgdir/$tarball $basetag
 	branch_cleanup_list+=" pristine-tar"
 	unpack_tarball $pkgdir/$tarball
@@ -317,9 +317,7 @@ use_existing() {
     git_tag_cleanly $pkg_tag
 
     # Comment on what we've created
-    echo Used:
-    cat _src
-    echo for _src
+    echo "Used '$(cat _src)' for _src."
 
     # and a reminder not to bitch *too* much
     echo "gp_setup --auto isn't thoroughly tested - please fix and/or report any bugs you find"
