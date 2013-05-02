@@ -356,6 +356,11 @@ cat <<EOF
 EOF
 }
 do_pkg() {
+    [[ -d .git ]] || {
+	# TODO: Should we initialize git here automatically?
+	fatal "This is not a git repository; Initialize the repository with 'git init'".
+    }
+
     verrel_regex="^[^-]+-[^-]+$"
     pkgdir=
     while [[ $1 ]]; do
