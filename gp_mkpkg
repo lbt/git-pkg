@@ -314,6 +314,14 @@ parser.add_argument('-V', '--verbose',
 
 args = parser.parse_args()
 
+GIT_DIR=".git"
+if args.git_dir:
+    GIT_DIR="%s/.git" % (args.git_dir)
+
+if not os.path.exists(GIT_DIR):
+    fail("%s directory doesn't exist." %GIT_DIR)
+    sys.exit(1)
+
 if args.git_dir:
     try:
         with open(os.devnull, 'w') as null:
