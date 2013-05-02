@@ -158,12 +158,12 @@ use_existing() {
 
     # If --unpack-to didn't make one then complain if we're not in a git repo
     [[ -d .git ]] || {
-	fatal usage "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
+	fatal "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
     }
 
-    [[ $basetag ]] || { fatal usage "basetag not supplied. You must use either --base-on= or --unpack-to= "; }
-    [[ $pkgdir ]] || { fatal usage "You must supply --pkgdir when using --auto"; }
-    [[ -d $pkgdir ]] || { fatal usage "Supplied --pkgdir '$pkgdir' is not a directory"; }
+    [[ $basetag ]] || { fatal "basetag not supplied. You must use either --base-on= or --unpack-to= "; }
+    [[ $pkgdir ]] || { fatal "You must supply --pkgdir when using --auto"; }
+    [[ -d $pkgdir ]] || { fatal "Supplied --pkgdir '$pkgdir' is not a directory"; }
 
     # Determine version/release numbers
     get_info_from_packaging $pkgdir
