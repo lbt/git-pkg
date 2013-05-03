@@ -40,7 +40,7 @@ update_changes(){ # release oldpatchtag patchtag
 
 #### Relevant gitlog. This line and lines up to the next changelog entry will be removed.
 EOF
-    git log $tag1..$tag2  >> $newchanges
+    git log $tag1..$tag2 -- >> $newchanges
     echo "#### this line will be removed" >> $newchanges
     cat *.changes >> $newchanges
     cp $newchanges $newchanges.pre-edit
@@ -327,7 +327,7 @@ EOF
 	newchanges=$(mktemp changes_XXXXX)
 	date +"* %a %b %Y ${GIT_AUTHOR_NAME:-Your Name (Set \$GIT_AUTHOR_NAME)} <${GIT_AUTHOR_EMAIL:-Your Email Set \$GIT_AUTHOR_EMAIL}> - $release" > $newchanges
 	echo -e "- git commits from $oldpatchtag to $sha1" >> $newchanges
-	git log ${oldpatchtag}..$patchtag_sha1 --oneline | sed -e 's/^/   /' >> $newchanges
+	git log ${oldpatchtag}..$patchtag_sha1 --oneline -- | sed -e 's/^/   /' >> $newchanges
 	echo >> $newchanges
 	cat *.changes >> $newchanges
 	mv $newchanges $changes || fatal "Can't update changes file"

@@ -58,7 +58,7 @@ require_clean_work_tree() {
 }
 
 count_commits() {
-    git rev-list $1..$2 | wc -l
+    git rev-list $1..$2 -- | wc -l
 }
 
 # Sets global initial_branch
