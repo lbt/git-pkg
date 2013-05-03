@@ -8,6 +8,10 @@ pkg_branch=pkg-$DISTRO
 
 ME=$(basename $0)
 
+# Function for verbose output
+log(){
+    [[ "x$_V" == "x1" ]] && echo "$@"
+}
 
 # Input: $pkgdir
 # Output: $ver  $rel
@@ -20,7 +24,7 @@ get_info_from_packaging() {
 	ver=$(grep Version: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
 	rel=$(grep Release: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
 	name=$(grep Name: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
-	echo "Found Version/Release: $ver-$rel in the packaging"
+	log "Found Version/Release: $ver-$rel in the packaging"
     fi
 }
 
@@ -79,7 +83,7 @@ cleanup(){
     # If there is no .git directory there is nothing to cleanup.
     [[ -d .git ]] || return
 
-    echo "Attempting to switch back to $initial_branch in git"
+    log "Attempting to switch back to $initial_branch in git"
     git checkout -f $initial_branch
     if [[ $tag_cleanup_list ]] ; then
 	echo "cleaning up tags: $tag_cleanup_list"

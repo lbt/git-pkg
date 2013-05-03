@@ -209,7 +209,7 @@ use_existing() {
     # Guess the tarball
     tarball=$(cd $pkgdir; find * -name '*t*bz2' -o -name '*t*gz' -o -name '*t*xz')
     tarball=${tarball:-$name.tar.bz2}
-    echo "Using tarball: $tarball"
+    log "Using tarball: $tarball"
 
     # If this is an unpack then it is pristine-tar with no
     # git tree so unpack the tarball as a starting point
@@ -252,11 +252,10 @@ use_existing() {
     # We'll probably need a --fuzz option at some point
     # Keep the dir clean and we should abort/warn when patches don't apply
     for patch in $(cd $pkgdir; grep Patch.*: *spec | cut -f2- -d:); do
-
-	echo Applying $patch
+	log Applying $patch
 	patch=$(basename $patch)
 	if ! patch $FUZZ --batch -p1 --no-backup-if-mismatch -s < $pkgdir/$patch; then
-	    echo "Failed to apply -p1 - trying -p0"
+	    log "Failed to apply -p1 - trying -p0"
 	    if ! patch $FUZZ --batch -p0 --no-backup-if-mismatch -s < $pkgdir/$patch; then
 		echo "Patch $pkgdir/$patch seemed to apply badly - fixup in a different terminal and press return to commit it and continue"
 		read dummy
@@ -303,14 +302,14 @@ use_existing() {
 	if [[ $gp_type != "pristine-tar" ]] ; then
 	    echo "SetupOptions: -q -n src"  >> $yamlfile
 	fi
-	gp_mkpkg --no-checkout --no-tarball || fatal "gp_mkpkg failed"
+	gp_mkpkg --no-checkout --no-tarball $_MKPKG_OPTS || fatal "gp_mkpkg failed"
 
 	specify -s -N -n $yamlfile
     else
 	if [[ $gp_type == "pristine-tar" ]] ; then
-	    gp_mkpkg -n --no-tarball  --no-src  || fatal "gp_mkpkg failed"
+	    gp_mkpkg -n --no-tarball  --no-src $_MKPKG_OPTS || fatal "gp_mkpkg failed"
 	else
-	    gp_mkpkg -n --no-tarball  || fatal "gp_mkpkg failed"
+	    gp_mkpkg -n --no-tarball $_MKPKG_OPTS || fatal "gp_mkpkg failed"
 	fi
     fi
 
@@ -322,7 +321,7 @@ use_existing() {
     git_tag_cleanly $pkg_tag
 
     # Comment on what we've created
-    echo "Used '$(cat _src)' for _src."
+    log "Used '$(cat _src)' for _src."
 
     # and a reminder not to bitch *too* much
     echo "gp_setup --auto isn't thoroughly tested - please fix and/or report any bugs you find"
@@ -481,7 +480,10 @@ case $1 in
     --manual )
 	shift
 	do_pkg "$@" ;;
-
+    -V)
+	_V=1
+	_MKPKG_OPTS="-V"
+	shift ;;
     * )
 	usage ;;
 esac

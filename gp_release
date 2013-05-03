@@ -24,7 +24,7 @@ switch_to_pkg(){
 
 cleanup(){
     # switch back to initial branch
-    echo "Attempting to switch back to $initial_branch in git"
+    log "Attempting to switch back to $initial_branch in git"
     git checkout $initial_branch
 }
 
@@ -189,6 +189,10 @@ do_release() {
 		export GIT_INDEX_FILE=$(mktemp /tmp/gp.index_XXXXX)
 		git read-tree --empty
 		shift ;;
+	    -V)
+		_V=1
+		_MKPKG_OPTS="-V"
+		shift ;;
 	    *-h*) usage;
 		exit 0;;
 	    * )
@@ -220,7 +224,7 @@ do_release() {
 	    get_info_from_packaging .
 	    oldrel=$rel
 	    rel=$(perl -e"\$r='$rel';print ++\$r;")
-	    echo "Automagically guessed $ver-$oldrel -> $ver-$rel"
+	    log "Automagically guessed $ver-$oldrel -> $ver-$rel"
 	    verrel=$ver-$rel
 	    if ! [[ $rel ]] || [[ $rel == "1" ]]; then
 		fatal "The value guessed for Release: is '$rel' and this is probably wrong.\n" \
@@ -297,7 +301,7 @@ do_release() {
 	fi
 
         # All done, use gp_mkpkg to update patch lists in yaml/spec etc
-	gp_mkpkg --no-tarball --no-checkout
+	gp_mkpkg --no-tarball --no-checkout $_MKPKG_OPTS
 
         # and commit
 	if [[ $manual_edit ]]; then
@@ -336,7 +340,7 @@ EOF
 	mv $newchanges $changes || fatal "Can't update changes file"
 
         # All done, use gp_mkpkg to update patch lists in yaml/spec etc
-	gp_mkpkg --no-checkout
+	gp_mkpkg --no-checkout $_MKPKG_OPTS
 
 	cat <<EOF
 The tarball and patches have been prepared for building.

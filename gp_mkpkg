@@ -43,6 +43,10 @@ def git(*args, **kwargs):
     """Run git with arguments, return stdout as string"""
     return subprocess.check_output([GIT_CMD] + list(args), **kwargs)
 
+def log(msg):
+    if args.verbose:
+	print(msg)
+
 def fail(msg, *args):
     """Report an error message and exit with failure"""
     print >>sys.stderr, 'ERROR:', msg % args
@@ -167,7 +171,7 @@ def prepare_tarball_and_patches(args):
                 p.yaml_Patches.append(patch)
 
         else:
-            print "No patches requested"
+            log("No patches requested")
 
     return p
 
@@ -261,7 +265,7 @@ def apply_patches_to_yaml(args, p, yamlfilename):
     yaml.dump(specify, f, Dumper=BlockDumper.BlockDumper, default_flow_style=False)
     f.close()
 
-    print "Running specify"
+    log("Running specify")
     subprocess.check_output(['specify', "-N", "-s", "-n"])
 
 def apply_patches(args, p):
@@ -301,6 +305,10 @@ parser.add_argument('--git-dir',
 parser.add_argument('tag', metavar='tag', type=str, nargs='?',
                     default=pkg_branch,
                     help='A tag to force checkout')
+
+parser.add_argument('-V', '--verbose',
+                    dest='verbose', action='store_true',
+                    help="Verbose output.")
 
 args = parser.parse_args()
 
