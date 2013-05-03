@@ -322,6 +322,9 @@ EOF
 	sha1=$(git rev-parse --short $patchtag_sha1)
 	gitcount=$(count_commits ${basetag} ${patchtag})
 	sed -i -re"s/Release:\s*(\S*)/Release: \1.$gitcount.$sha1/" $pkgfile
+	# Get version from packaging and then build dummy release with it.
+	get_info_from_packaging
+	release="$ver-1.$gitcount.$sha1"
 	# Now add a dummy changelog entry
 	changes=$(find . -maxdepth 1 -name '*changes' -print -quit)
 	newchanges=$(mktemp changes_XXXXX)
