@@ -8,9 +8,8 @@
 assert_not_on_pkg_branch() {
     if [[ $initial_branch == "pkg-$DISTRO" ]]; then
 	fatal <<EOF
-$ME must not be run from the pkg-$DISTRO branch. Maybe
+$ME must not be run from the 'pkg-$DISTRO' git branch. Maybe you wanted to be in master:
 git checkout -f master
-
 EOF
     fi
 }
