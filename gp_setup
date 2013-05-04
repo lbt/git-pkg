@@ -161,12 +161,21 @@ use_existing() {
 	fatal "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
     }
 
-    [[ $basetag ]] || { fatal "basetag not supplied. You must use either --base-on= or --unpack-to= "; }
     [[ $pkgdir ]] || { fatal "You must supply --pkgdir when using --auto"; }
     [[ -d $pkgdir ]] || { fatal "Supplied --pkgdir '$pkgdir' is not a directory"; }
-
     # Determine version/release numbers
     get_info_from_packaging $pkgdir
+
+    if [[ "$ver" ]]; then 
+	# When version is found and basetag is not set set version to basetag
+	if [[ ! "$basetag" ]]; then
+	    basetag=$ver
+	fi
+    else
+	# If version is not found one must define base tag.
+	[[ $basetag ]] || { fatal "basetag not supplied. You must use either --base-on= or --unpack-to= "; }
+    fi
+
     name=${name:-unnamed}
     rel=${force_rel:-${rel:-1}}
     ver=${force_ver:-${ver:-$basetag}}
