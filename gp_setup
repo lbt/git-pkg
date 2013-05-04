@@ -331,9 +331,6 @@ use_existing() {
 
     # Comment on what we've created
     log "Used '$(cat _src)' for _src."
-
-    # and a reminder not to bitch *too* much
-    echo "gp_setup --auto isn't thoroughly tested - please fix and/or report any bugs you find"
 }
 
 usage_pkg(){
