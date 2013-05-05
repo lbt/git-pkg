@@ -273,7 +273,7 @@ do_release() {
 	echo ${type}:${tarball}:${basetag}:${patchtag} > _src
 	# There are patches so we make mer-master branch and point it
 	# here
-	echo "Reset $DISTRO-master branch to start at $patchtag"
+	log "Reset $DISTRO-master branch to start at $patchtag"
 	git branch -f $DISTRO-master $patchtag
     fi
 
@@ -307,8 +307,7 @@ do_release() {
 	    git add -u .
 	    cat <<EOF
 
-The packaging has been prepared. You may now manally edit the
-packaging.
+GUIDE: The packaging has been prepared. You may now manually edit the packaging.
 
 When you are done, commit and tag the changes:
 
