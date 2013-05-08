@@ -60,8 +60,10 @@ def checkout_packaging_branch(pkg, force):
     spec etc so the patch-sets can be added.)
     """
     if force:
-        git('checkout', '-f', pkg)
-
+        try:
+          git('checkout', '-f', pkg)
+        except:
+          fail("Unable to checkout '%s' branch." % (pkg))
     try:
         branch = git('symbolic-ref', 'HEAD').replace('refs/heads/', '').rstrip()
     except subprocess.CalledProcessError:
