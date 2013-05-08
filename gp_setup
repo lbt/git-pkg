@@ -132,8 +132,6 @@ use_existing() {
 		# Would be nice to default to tag=version
 		unpack=true
 		basetag=${1#*=}
-		# Make a git repo if there isn't one
-		if ! [[ -d .git ]]; then git init; fi
 		shift ;;
 	    --pkgdir=* )
 		pkgdir=${1#*=}
@@ -155,11 +153,6 @@ use_existing() {
 		fatal "Error $1 not recognised";;
 	esac
     done
-
-    # If --unpack-to didn't make one then complain if we're not in a git repo
-    [[ -d .git ]] || {
-	fatal "This is not a git repository; use gp_setup when you've cloned or created a normal src repo that is ready for packaging".
-    }
 
     [[ $pkgdir ]] || { fatal "You must supply --pkgdir when using --auto"; }
     [[ -d $pkgdir ]] || { fatal "Supplied --pkgdir '$pkgdir' is not a directory"; }
@@ -195,8 +188,14 @@ use_existing() {
 
     pbranch="${DISTRO}-master"
 
-    if ! [[ -d .git ]]; then
-	fatal "This is not a git repository"
+    # Make sure we have git tree initialized.
+    if ! [[ -d .git ]]; then 
+       git init
+    fi
+
+    # Make sure there is at least one commit on the git tree.
+    if [[ "$(git branch | wc -l)" -eq "0" ]]; then
+        git commit -s --allow-empty -m "Initialized git repository."
     fi
 
     # Verify there's only a single spec or yaml file.
