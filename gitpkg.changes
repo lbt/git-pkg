@@ -1,3 +1,19 @@
+* Wed May 2013 David Greaves <david@dgreaves.com> - 0.0.8-1
+- Handle %setup lines correctly - thanks to Juha for help getting it right
+- Clean up comments for patches by removing leading numerics
+- Remove whitespace, not just spaces from Version/Release
+- Fix missing day-of-month in .changes entry
+- Many changes thanks to Marko Saukko:
+ - Only require 3 parameters in _src
+ - When basetag is not defined use the Version from .spec file if possible.
+ - Add -V verbose options and make things less verbose by default.
+ - Fix version in changelog when no --ver is given to gp_release.
+ - Make sure git interprets the tags as tags and not paths.
+ - Check that spec file exists as well.
+ - Don't print usage as it makes it very hard to see what actual error is.
+ - Print ERROR when error happens.
+ - When git tree is empty then we need additional checks.
+
 * Mon Apr 2013 David Greaves <david@dgreaves.com> - 0.0.7-1
 - Force upack to be pristine tar
 - Document the --pristine flag
