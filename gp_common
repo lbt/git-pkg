@@ -75,8 +75,10 @@ save_initial_branch() {
 }
 
 git_tag_cleanly() {
-    git tag $@
-    tag_cleanup_list+=" $1"
+    tag=$1
+    old=$(git rev-list -1 $1 2>/dev/null || echo none)
+    git tag -f $@
+    tag_cleanup_list+=" $1:$old"
 }
 
 cleanup(){
@@ -87,8 +89,13 @@ cleanup(){
     git checkout -f $initial_branch
     if [[ $tag_cleanup_list ]] ; then
 	echo "cleaning up tags: $tag_cleanup_list"
-	for tag in $tag_cleanup_list; do
-	    git tag -d $tag
+	for tagpair in $tag_cleanup_list; do
+	    IFS=: read tag sha1 <<< $tagpair
+	    if [[ $sha1 == "none" ]]; then
+		git tag -d $tag
+	    else
+		git tag -f $tag $sha1
+	    fi
 	done
     fi
     if [[ $branch_cleanup_list ]]; then
