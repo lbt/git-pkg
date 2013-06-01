@@ -108,6 +108,7 @@ cleanup(){
 
 # If the first arg is 'usage' then usage() is called right before exit
 fatal() {
+    local usage=
     if [[ $1 == "usage" ]]; then
 	shift
 	usage=1
