@@ -2,7 +2,7 @@ Name: gitpkg
 Summary: Helps manage packaging in git
 Description: Allows the packaging to be maintained in a discrete git tree in the same
   git repo as the source
-Version: 0.0.8
+Version: 0.1.0
 Release: 1
 Group: Development
 License: GPLv2
@@ -22,6 +22,7 @@ Configure: none
 SetupOptions: -q -n src
 BuildArch: noarch
 Files:
+  - '%{_bindir}/git-pkg'
   - '%{_bindir}/gp_release'
   - '%{_bindir}/gp_setup'
   - '%{_bindir}/gp_mkpkg'
@@ -39,7 +40,7 @@ SubPackages:
     Requires:
       - gitpkg
     Files:
-      - '%dir /usr/lib/obs/'
-      - '%dir /usr/lib/obs/service/'
-      - /usr/lib/obs/service/gitpkg
-      - /usr/lib/obs/service/gitpkg.service
+      - '%dir %{obs_libdir}/obs/'
+      - '%dir %{obs_libdir}/obs/service/'
+      - '%{obs_libdir}/obs/service/gitpkg'
+      - '%{obs_libdir}/obs/service/gitpkg.service'

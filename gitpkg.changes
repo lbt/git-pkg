@@ -1,4 +1,14 @@
-* Wed May 2013 David Greaves <david@dgreaves.com> - 0.0.8-1
+* Thu Jun 06 2013 David Greaves <david@dgreaves.com> - 0.1.0-1
+- Introduce git pkg syntax and use rpm/ as the location of packaging
+  Massive simplification to workflow
+  Based on an approach from:
+    https://github.com/cypher/dotfiles/blob/master/bin/git-new-workdir
+  Remove switching between src and packaging
+
+- Store old value of tags in case they were moved and not just made
+- Fixup changelog dates
+
+* Wed May 22 2013 David Greaves <david@dgreaves.com> - 0.0.8-1
 - Handle %setup lines correctly - thanks to Juha for help getting it right
 - Clean up comments for patches by removing leading numerics
 - Remove whitespace, not just spaces from Version/Release
@@ -14,12 +24,12 @@
  - Print ERROR when error happens.
  - When git tree is empty then we need additional checks.
 
-* Mon Apr 2013 David Greaves <david@dgreaves.com> - 0.0.7-1
+* Mon Apr 15 2013 David Greaves <david@dgreaves.com> - 0.0.7-1
 - Force upack to be pristine tar
 - Document the --pristine flag
 - Don't miss added/removed files when applying patches
 
-* Thu Apr 2013 David Greaves <david@dgreaves.com> - 0.0.6-1
+* Thu Apr 11 2013 David Greaves <david@dgreaves.com> - 0.0.6-1
 - Improve error reports and allow usage() from fatal
 - Improve comments and docs
 - Don't create mer-master if no patches exist
@@ -29,23 +39,23 @@
 - Set GIT_NAME/EMAIL environment variables from config for use in scripts
 - Add a --build flag so gp_mkpkg just creates patches/tarball without hacking the spec/yaml
 
-* Sat Mar 2013 David Greaves <david@dgreaves.com> - 0.0.5-1
+* Sat Mar 30 2013 David Greaves <david@dgreaves.com> - 0.0.5-1
 - Handle %setup more reliably
 - gitpkg service handler validates inputs against regexp
 
-* Sat Mar 2013 David Greaves <david@dgreaves.com> - 0.0.4-1
+* Sat Mar 30 2013 David Greaves <david@dgreaves.com> - 0.0.4-1
 - Use gitpkg and verify REPO format
 
-* Fri Mar 2013 David Greaves <david@dgreaves.com> - 0.0.3-2
+* Fri Mar 29 2013 David Greaves <david@dgreaves.com> - 0.0.3-2
 - Set noarch, python-yaml dependency and python macros
 
-* Fri Mar 2013 David Greaves <david@dgreaves.com> - 0.0.3-1
+* Fri Mar 29 2013 David Greaves <david@dgreaves.com> - 0.0.3-1
 - Change use of --ver, --rel and --base to be more self-explanatory. Reword docs.
 - Get the Name from packaging and rename function
 - Always add -n src/ even if not present in original %setup
 - Fix breakage in gp_release --base (now --ver) handling
 
-* Sun Mar 2013 David Greaves <david@dgreaves.com> - 0.0.2-1
+* Sun Mar 24 2013 David Greaves <david@dgreaves.com> - 0.0.2-1
 - Extensive changes: see README.rst
 - Patch and branch formats defined more rigidly
 - Added source service for OBS

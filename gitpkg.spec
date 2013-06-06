@@ -9,10 +9,11 @@ Name:       gitpkg
 # Magic
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 %{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
+%define obs_libdir /usr/lib
 # << macros
 
 Summary:    Helps manage packaging in git
-Version:    0.0.8
+Version:    0.1.0
 Release:    1
 Group:      Development
 License:    GPLv2
@@ -67,6 +68,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
+%{_bindir}/git-pkg
 %{_bindir}/gp_release
 %{_bindir}/gp_setup
 %{_bindir}/gp_mkpkg
@@ -79,9 +81,9 @@ rm -rf %{buildroot}
 
 %files -n obs-service-gitpkg
 %defattr(-,root,root,-)
-%dir /usr/lib/obs/
-%dir /usr/lib/obs/service/
-/usr/lib/obs/service/gitpkg
-/usr/lib/obs/service/gitpkg.service
+%dir %{obs_libdir}/obs/
+%dir %{obs_libdir}/obs/service/
+%{obs_libdir}/obs/service/gitpkg
+%{obs_libdir}/obs/service/gitpkg.service
 # >> files obs-service-gitpkg
 # << files obs-service-gitpkg
