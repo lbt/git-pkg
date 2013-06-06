@@ -239,7 +239,7 @@ def apply_patches_to_spec(args, p, specfilename):
                     print line.strip()
                     line,c = re.subn(r'-n\s*\S*', r'-n src', line)
                     if c == 0:
-                        line += " -n src"
+                        line = line.strip() + " -n src\n"
                      
                     print "converted to"
                     print line.strip()

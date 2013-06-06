@@ -31,47 +31,9 @@ get_info_from_packaging() {
 # Input: 
 # Output: 
 # http://stackoverflow.com/a/3879077/337649
-require_clean_work_tree() {
-    # Update the index
-    git update-index -q --ignore-submodules --refresh
-    local _err=0
-
-    # Disallow unstaged changes in the working tree
-    if ! git diff-files --quiet --ignore-submodules --
-    then
-        echo >&2 "cannot $1: you have unstaged changes."
-        git diff-files --name-status -r --ignore-submodules -- >&2
-        _err=1
-    fi
-
-    # Disallow uncommitted changes in the index
-    # If git log -1 returns != 0 then git tree doesn't have any commits so we hide errors.
-    # FIXME: This probably doesn't work as expcted.
-    if git log -1 &> /dev/null && ! git diff-index --cached --quiet HEAD --ignore-submodules --
-    then
-        echo >&2 "cannot $1: your index contains uncommitted changes."
-        git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
-        _err=1
-    fi
-
-    if [ $_err = 1 ]
-    then
-        echo >&2 "Please commit or stash them before using $ME."
-        exit 1
-    fi
-}
 
 count_commits() {
     git rev-list $1..$2 -- | wc -l
-}
-
-# Sets global initial_branch
-save_initial_branch() {
-    # No .git no branches.
-    [[ -d .git ]] || return
-
-    initial_branch=$(git symbolic-ref HEAD)
-    initial_branch=${initial_branch##refs/heads/}
 }
 
 git_tag_cleanly() {
@@ -85,12 +47,10 @@ cleanup(){
     # If there is no .git directory there is nothing to cleanup.
     [[ -d .git ]] || return
 
-    log "Attempting to switch back to $initial_branch in git"
-    git checkout -f $initial_branch
     if [[ $tag_cleanup_list ]] ; then
 	echo "cleaning up tags: $tag_cleanup_list"
 	for tagpair in $tag_cleanup_list; do
-	    IFS=: read tag sha1 <<< $tagpair
+	    eval IFS=: read tag sha1 <<< $tagpair
 	    if [[ $sha1 == "none" ]]; then
 		git tag -d $tag
 	    else
@@ -120,6 +80,42 @@ fatal() {
     fi
     [[ $usage ]] && usage
     exit 1
+}
+
+# Setup rpm dir if not present
+# optionally supply a branch to checkout to rpm/
+ensure_rpm_subdir() {
+
+    local rel_git_dir=../../.git
+    local rpmdir=./rpm
+    local branch=$1
+
+    mkdir -p "$rpmdir/.git" || fatal "unable to create git repo in \"$rpmdir\"!"
+
+    # From https://github.com/cypher/dotfiles/blob/master/bin/git-new-workdir
+    #
+    # create the links to the original repo. explicitly exclude index,
+    # HEAD and logs/HEAD from the list since they are purely related
+    # to the current working directory, and should not be shared.
+    [[ -e $rpmdir/.git/main_git_repo ]] && fatal "rpm/.git is already a tracking rpm directory"
+    ln -s $rel_git_dir $rpmdir/.git/main_git_repo
+    for x in config refs logs/refs objects info hooks packed-refs remotes rr-cache svn; do
+	case $x in
+	    */*)
+		mkdir -p "$(dirname "$rpmdir/.git/$x")"
+		ln -s "../main_git_repo/$x" "$rpmdir/.git/$x" ;;
+	    *)
+		ln -s "main_git_repo/$x" "$rpmdir/.git/$x" ;;
+	esac
+    done
+
+    # now checkout rpm/
+    if [[ $branch ]]; then (
+	    cd "$rpmdir"
+	    cp "$rel_git_dir/HEAD" .git/HEAD
+	    git checkout -f $branch
+	)
+    fi
 }
 
 export GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-$(git config user.email)}

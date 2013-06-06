@@ -4,36 +4,19 @@
 # This is part of the Mer git-packaging suite
 
 . ${GP_LIB:=/usr/share/gitpkg}/gp_common
-
-assert_not_on_pkg_branch() {
-    if [[ $initial_branch == "pkg-$DISTRO" ]]; then
-	fatal <<EOF
-$ME must not be run from the 'pkg-$DISTRO' git branch. Maybe you wanted to be in master:
-git checkout -f master
-EOF
-    fi
-}
+pkg_dir=${PKG_DIR:-rpm/}
 
 git_tag_exists() { git show-ref --tags --quiet --verify -- "refs/tags/$1"; }
 git_branch_exists() { git show-ref --quiet --verify -- "refs/heads/$1"; }
-
-switch_to_pkg(){
-    git checkout -f pkg-$DISTRO || { fatal "Can't checkout pkg-$DISTRO, aborting"; }
-}
-
-cleanup(){
-    # switch back to initial branch
-    log "Attempting to switch back to $initial_branch in git"
-    git checkout $initial_branch
-}
 
 update_changes(){ # release oldpatchtag patchtag
     release=$1
     tag1=$2
     tag2=$3
     changes=$(find . -maxdepth 1 -name '*changes' -print -quit)
+    changes=${changes:-$pkgname.changes}
     newchanges=$(mktemp changes_XXXXX)
-    date +"* %a %b %Y ${GIT_AUTHOR_NAME:-Your Name (Set \$GIT_AUTHOR_NAME)} <${GIT_AUTHOR_EMAIL:-Your Email Set \$GIT_AUTHOR_EMAIL}> - $release" > $newchanges
+    date +"* %a %b %d %Y ${GIT_AUTHOR_NAME:-Your Name (Set \$GIT_AUTHOR_NAME)} <${GIT_AUTHOR_EMAIL:-Your Email Set \$GIT_AUTHOR_EMAIL}> - $release" > $newchanges
     cat <<EOF >> $newchanges
 - Please enter a changelog message
 
@@ -41,10 +24,11 @@ update_changes(){ # release oldpatchtag patchtag
 EOF
     git log $tag1..$tag2 -- >> $newchanges
     echo "#### this line will be removed" >> $newchanges
-    cat *.changes >> $newchanges
+    cat *.changes 2>/dev/null >> $newchanges
     cp $newchanges $newchanges.pre-edit
     ${EDITOR:-vi} $newchanges || fatal "EDITOR not set and vi not available"
     if diff --report-identical-files $newchanges $newchanges.pre-edit > /dev/null; then
+	rm -f $newchanges.pre-edit $newchanges~
 	fatal "No changes entered, aborting"
     fi
 
@@ -56,12 +40,11 @@ EOF
 
 usage() {
     cat <<EOF
-    $ME [--rel[=<version-release>]] [--ver=<tag>] [--edit] [--git-dir=<path>]
+    $ME [--rel[=<version-release>]] [--ver=<tag>]  [--edit] [--git-dir=<path>]
 
- 
        Used to create a new release or prepare for an intermediate
-       build. It is used to update the packaging by modifying the
-       _src, .changes, .yaml and .spec files.
+       build. It modifies the _src, .changes, .yaml and .spec files.
+
        Version: and Release: values and patch lines will be updated in
        the yaml/spec. A changelog entry is prompted for (using git log
        as a base) and the git repo will be tagged.
@@ -80,12 +63,13 @@ usage() {
        packaging. It does not change the 'version' of a package or the
        main tag the package is built from.
 
-       --ver is used to create a new version of a package. Usually
-       this means that the <release> value is '1'. Usually this means
-       there is a new upstream code/tag. If the upstream tag is not a
-       simple version (eg it has text or underscores: 'vX_Y_Z') then
-       the extended form of the --rel arg can be used to override the
-       <version> and <release> values.
+       --ver is used to create a new version of a package (ie the
+       <release> value is '1'). Usually this means there is a new
+       upstream code/tag. If the upstream tag is not a simple version
+       (eg it has text or underscores: 'vX_Y_Z') then the extended
+       form of the --rel arg can be used to override the <version> and
+       <release> values. If the provided value does not exist the tag
+       is made at HEAD.
 
 
        --rel[=<version-release>]
@@ -96,7 +80,7 @@ usage() {
          the packaging and uses perls string increment on
          <release>. This often works :)
 
-         HEAD when the command is run will be tagged as
+         src HEAD when the command is run will be tagged as
          $DISTRO-<version-release> and packaging as
          pkg-$DISTRO-<version-release>. (Usually git checkout -f
          master would be run before running $ME --rel)
@@ -146,9 +130,6 @@ do_release() {
 	case $1 in
 	    --ver=*)
 		newver=${1#*=}
-		if ! git_tag_exists $newver; then
-		    fatal "--ver must provide a valid tag. '$newver' is not a valid tag."
-		fi
 		# if a plain --rel is given aswell (ie without
 		# =ver-rel) that's ambiguous since --ver implies a
 		# new version
@@ -204,30 +185,28 @@ do_release() {
     git rev-parse --git-dir > /dev/null 2>&1 || 
 	fatal "This is not a git repository; use $ME in a gitpkg git repo or use --git-dir."
 
-    # We need a clean tree unless we're in another directory using --git-dir
-    if ! [[ $GIT_INDEX_FILE ]]; then require_clean_work_tree "run $ME"; fi
-
-    save_initial_branch
-    assert_not_on_pkg_branch
-
     # store current git postion as we'll make patches to here from the
     # basetag. If they turn out to be the same ... no patches
     patchtag_sha1=$(git rev-parse HEAD)
-    
+
     trap cleanup EXIT
-    switch_to_pkg
+    
+    # Make a tag if none exists
+    if ! git_tag_exists $newver; then
+	git_tag_cleanly $newver
+    fi
 
     # Get ver-rel and increment it if we need to
     case $get_verrel in
 	packaging )
-	    get_info_from_packaging .
+	    get_info_from_packaging $pkg_dir/
 	    oldrel=$rel
 	    rel=$(perl -e"\$r='$rel';print ++\$r;")
 	    log "Automagically guessed $ver-$oldrel -> $ver-$rel"
 	    verrel=$ver-$rel
 	    if ! [[ $rel ]] || [[ $rel == "1" ]]; then
 		fatal "The value guessed for Release: is '$rel' and this is probably wrong.\n" \
-                    "Please specify an exact value for --rel=\n" \
+                    "Please speciyf an exact value for --rel=\n" \
 		    "Currently Version: $ver and Release: $oldrel"
 	    fi
 	    ;;
@@ -242,7 +221,7 @@ do_release() {
     esac
 
     # Update from _src
-    IFS=: read type tarball basetag oldpatchtag rest < _src
+    IFS=: read type tarball basetag oldpatchtag rest < $pkg_dir/_src
 
     # TODO: verify tarball basetag oldpatchtag are sane
     # basetag should be ${DISTRO}-$ver
@@ -268,9 +247,9 @@ do_release() {
     # if basetag and patchtag have the same sha1 then there are no
     # patches to package.
     if [[ $(git rev-parse $basetag 2>/dev/null) == $(git rev-parse $patchtag 2>/dev/null) ]]; then
-	echo ${type}:${tarball}:${basetag} > _src
+	echo ${type}:${tarball}:${basetag} > $pkg_dir/_src
     else
-	echo ${type}:${tarball}:${basetag}:${patchtag} > _src
+	echo ${type}:${tarball}:${basetag}:${patchtag} > $pkg_dir/_src
 	# There are patches so we make mer-master branch and point it
 	# here
 	log "Reset $DISTRO-master branch to start at $patchtag"
@@ -278,9 +257,11 @@ do_release() {
     fi
 
     # Find the yaml or spec (or abort)
-    pkgfile=$(find . -maxdepth 1 -name '*yaml' -print -quit)
+    pkgfile=$(cd $pkg_dir;find . -maxdepth 1 -name '*yaml' -print -quit)
+    pkgname=$(basename $pkgfile .yaml)
     if [[ ! $pkgfile ]]; then
-	pkgfile=$(find . -maxdepth 1 -name '*spec' -print -quit)
+	pkgfile=$(cd $pkg_dir;find . -maxdepth 1 -name '*spec' -print -quit)
+	pkgname=$(basename $pkgfile .spec)
     fi
     if [[ ! $pkgfile ]]; then
 	fatal "No spec or yaml files found"
@@ -289,6 +270,7 @@ do_release() {
     # Update the version/release, the .changes and the list of patches
     # in the packaging
     if [[ $verrel ]]; then
+	cd $pkg_dir
 	sed -i -e"s/Version:.*/Version: $ver/" $pkgfile
 	sed -i -e"s/Release:.*/Release: $rel/" $pkgfile
 	# If this is a newver then it's a new upstream release: give a
@@ -311,18 +293,18 @@ GUIDE: The packaging has been prepared. You may now manually edit the packaging.
 
 When you are done, commit and tag the changes:
 
+cd $pkg_dir
 git commit -am"Release $patchtag"
 git tag pkg-$patchtag
-git checkout $initial_branch
 EOF
 	else
 	    git commit -am"Release $patchtag"
 	    git_tag_cleanly pkg-$patchtag
-	    git checkout $initial_branch
 	fi
     else
 	sha1=$(git rev-parse --short $patchtag_sha1)
 	gitcount=$(count_commits ${basetag} ${patchtag})
+	cd $pkg_dir
 	sed -i -re"s/Release:\s*(\S*)/Release: \1.$gitcount.$sha1/" $pkgfile
 	# Get version from packaging and then build dummy release with it.
 	get_info_from_packaging

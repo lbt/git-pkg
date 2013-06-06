@@ -1,5 +1,5 @@
 PYTHON ?= python
-SCRIPTS=gp_setup gp_release
+SCRIPTS=gp_setup gp_release git-pkg
 LIBS=gp_common
 BINDIR=${DESTDIR}/usr/bin
 SHAREDIR=${DESTDIR}/usr/share/gitpkg

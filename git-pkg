@@ -1,0 +1,24 @@
+#!/bin/bash
+
+. ${GP_LIB:=/usr/share/gitpkg}/gp_common
+
+if [[ -d rpm ]]; then
+    case $1 in 
+	--* )
+	    exec gp_release "$@" ;;
+	"" )
+	    echo "What should I do?" ;;
+	* )
+	    cd rpm
+	    exec git "$@" ;;
+    esac
+else
+    case $1 in 
+	--* )
+	    exec gp_setup "$@" ;;
+	"" )
+	    echo "No git pkg directory"
+	    gp_setup --usage
+	    ;;
+    esac
+fi

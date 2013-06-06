@@ -5,42 +5,39 @@ Normal Operation
 
 New release of a working package that needs a patch? use --rel:
 
-* Checkout the mer-master branch
 * Commit your changes/patches
-* gp_release --rel=<Ver-Rel>
+* git pkg --rel=<Ver>
+* edit the .changes file
 * git push --tags origin master pkg-mer
 
-Want to work on the packaging? Same approach but do --edit and then commit
-your packaging changes:
+Want to work on the packaging?
 
-* gp_release --rel=<Ver-Rel> --edit
+* cd rpm
 * hack on the packaging
-* git commit -am"Release <Ver-Rel>"
 
-Fancy using osc to do a local verify build?
+Want a local verify build?
 
-* osc co myprj/pkg
-* cd myprj/pkg
-* gp_release --git-dir=<my gitpkg repo with changes>
-* osc build
+* mb2 build
 
 Need to setup a new package?
 
 * Clone upstream
-* Find the right tag and see if a pristine-tar should also be used
-* Got some good packaging from OBS? Use --auto
-* gp_setup --auto --pristine --base-on=RELEASE_0_9_7 --pkgdir=<good packaging> --ver=0.9.7-1
+* Find the right tag (see if a pristine-tar should also be used)
+* Got some good packaging from OBS?
+* git pkg --pkgdir=<good packaging> --base-on=RELEASE_0_9_7 --ver=0.9.7-1
+
 otherwise:
 
-* gp_setup --manual --pkgdir=<rough packaging> --ver=0.9.7-1
+* git pkg --manual --pkgdir=<rough packaging> --ver=0.9.7-1
 
 New upstream version? use --ver:
 
 * Checkout the mer-master branch or pull the upstream and tags
-* gp_release --ver=<release-tag>
+* use mb2 until it builds
+* git pkg --ver=<release-tag>
 * git push --tags origin master pkg-mer
 
-Basically gp_release is for managing Version: and Release: and adding patches; gp_setup is for setting up new package repositories. Other tools are used by the OBS to checkout the code for building.
+Basically git pkg --ver and --rel manage Version: and Release:  --pkg-dir is for setting up new package repositories.
 
 Why is it needed?
 =================
@@ -108,7 +105,7 @@ We have some packaging so check it out (in a different window)::
 
   osc co Project:KDE:Mer_Extras oprofile
 
-so we can use --auto
+so we can use --pkg-dir
 
 Looking at the tarball that is released we see there are changes to the git tree (autogen.sh etc) so we'll use --pristine.
 
@@ -116,9 +113,9 @@ The release tag is "RELEASE_0_9_7" so that will be the --base-on value; since th
 
 The command then is::
 
-  gp_setup --auto --pristine --base-on=RELEASE_0_9_7 \
+  git pkg  --pristine --base-on=RELEASE_0_9_7 --ver=0.9.7-1 \
            --pkgdir=/mer/obs/cobs/Project:KDE:Mer_Extras/oprofile \
-           --ver=0.9.7-1
+           
 
 
 More examples:
@@ -126,11 +123,11 @@ More examples:
 Project with an upstream git and some existing packaging::
 
   git clone upstream
-  gp_setup --auto --base-on=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --ver=3.1.7-3
+  git pkg --base-on=v3.1.7 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/pciutils/ --ver=3.1.7-3
 
 Project with no upstream git a pristine tar and some existing packaging but no patches (using sudo as an example)::
 
-  gp_setup --auto --pristine --unpack-to=1.8.2 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/sudo
+  git pkg --pristine --unpack-to=1.8.2 --pkgdir=/mer/obs/cobs/Mer:Tools:Testing/sudo
 
 
 Git Names and branch layouts
@@ -224,10 +221,11 @@ Find the upstream and clone it::
  git clone git://github.com/fenrus75/powertop.git
 
  git checkout -f v2.1.1
- gp_setup --manual --ver=2.1.1-1
+ git pkg --manual --ver=2.1.1-1
 
-At this point you are in the packaging branch. Providing a --rel lets
-gp_setup do some tagging for us.
+At this point you have the packaging in rpm/ ... so:
+
+ cd rpm/
 
 Edit yaml/spec/changes and create some packaging (we'll cheat and use philippe's)::
 
@@ -240,24 +238,14 @@ Describe in the _src file how OBS gets the source (in this case, use simple git 
  echo git:powertop-v2.1.1.tar.bz2:mer-2.1.1-1 > _src
  git add powertop.* _src
 
-Check to ensure it builds.
+Check to ensure it builds (be careful - if your target has extra packages you may miss build dependencies)
 
-First we must create an osc package to build the source in.
+ cd ..
+ mb2 build
 
-Go to a suitable OBS directory with Mer_Core_i486 or similar as a repo target.
+All good? commit::
 
-Now create the package::
-  
-  osc mkpac powertop
-  cd powertop
-
-Now we're in a suitable osc directory we can setup git::
-
- gp_release --git-dir=<working git dir>
- osc build Mer_Core_i486 i586
-
-All good, commit::
-
+ git pkg commit -s
  git commit -s
 
 
