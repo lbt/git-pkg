@@ -1,3 +1,8 @@
+* Sat Jun 08 2013 David Greaves <david@dgreaves.com> - 0.1.1-1
+- Use a sensible name in _src for the tarball
+- The command : git pkg    will now ensure the pkg_dir is setup if appropriate
+  Also support pkg_dir != rpm/ by setting PKG_DIR
+
 * Thu Jun 06 2013 David Greaves <david@dgreaves.com> - 0.1.0-1
 - Introduce git pkg syntax and use rpm/ as the location of packaging
   Massive simplification to workflow
