@@ -4,10 +4,8 @@
 # This is part of the Mer git-packaging suite
 
 . ${GP_LIB:=/usr/share/gitpkg}/gp_common
-pkg_dir=${PKG_DIR:-rpm/}
 
 git_tag_exists() { git show-ref --tags --quiet --verify -- "refs/tags/$1"; }
-git_branch_exists() { git show-ref --quiet --verify -- "refs/heads/$1"; }
 
 update_changes(){ # release oldpatchtag patchtag
     release=$1

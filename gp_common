@@ -2,9 +2,11 @@
 # gitpkg common shell functions and variables
 
 # DISTRO should go to some config file
-DISTRO=mer
+DISTRO=${DISTRO:-mer}
 
 pkg_branch=pkg-$DISTRO
+
+pkg_dir=${PKG_DIR:-rpm/}
 
 ME=$(basename $0)
 
@@ -31,10 +33,13 @@ get_info_from_packaging() {
 # Input: 
 # Output: 
 # http://stackoverflow.com/a/3879077/337649
-
 count_commits() {
     git rev-list $1..$2 -- | wc -l
 }
+
+# Input: branch name
+# Output: returns success/fail 
+git_branch_exists() { git show-ref --quiet --verify -- "refs/heads/$1"; }
 
 git_tag_cleanly() {
     tag=$1
@@ -87,32 +92,34 @@ fatal() {
 ensure_rpm_subdir() {
 
     local rel_git_dir=../../.git
-    local rpmdir=./rpm
     local branch=$1
 
-    mkdir -p "$rpmdir/.git" || fatal "unable to create git repo in \"$rpmdir\"!"
+    mkdir -p "$pkg_dir/.git" || fatal "unable to create git repo in \"$pkg_dir\"!"
+
+    [[ -e $pkg_dir/.git/main_git_repo ]] && return 0 # Already setup
+    [[ -e $pkg_dir/.git/refs ]] && fatal "$pkg_dir/.git is a git dir but not a packaging tracking directory. Aborting."
 
     # From https://github.com/cypher/dotfiles/blob/master/bin/git-new-workdir
     #
     # create the links to the original repo. explicitly exclude index,
     # HEAD and logs/HEAD from the list since they are purely related
     # to the current working directory, and should not be shared.
-    [[ -e $rpmdir/.git/main_git_repo ]] && fatal "rpm/.git is already a tracking rpm directory"
-    ln -s $rel_git_dir $rpmdir/.git/main_git_repo
+    log "Setting up $pkg_dir as a packaging tracking directory"
+    ln -s $rel_git_dir $pkg_dir/.git/main_git_repo
     for x in config refs logs/refs objects info hooks packed-refs remotes rr-cache svn; do
 	case $x in
 	    */*)
-		mkdir -p "$(dirname "$rpmdir/.git/$x")"
-		ln -s "../main_git_repo/$x" "$rpmdir/.git/$x" ;;
+		mkdir -p "$(dirname "$pkg_dir/.git/$x")"
+		ln -s "../main_git_repo/$x" "$pkg_dir/.git/$x" ;;
 	    *)
-		ln -s "main_git_repo/$x" "$rpmdir/.git/$x" ;;
+		ln -s "main_git_repo/$x" "$pkg_dir/.git/$x" ;;
 	esac
     done
 
-    # now checkout rpm/
+    # now put us in detached HEAD state and then force checkout pkg_dir/ to $branch
     if [[ $branch ]]; then (
-	    cd "$rpmdir"
-	    cp "$rel_git_dir/HEAD" .git/HEAD
+	    cd $pkg_dir
+	    echo 0000000000000000000000000000000000000000 > .git/HEAD
 	    git checkout -f $branch
 	)
     fi
