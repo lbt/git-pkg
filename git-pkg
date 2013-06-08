@@ -2,23 +2,23 @@
 
 . ${GP_LIB:=/usr/share/gitpkg}/gp_common
 
-if [[ -d rpm ]]; then
+if [[ -d $pkg_dir ]]; then
     case $1 in 
 	--* )
 	    exec gp_release "$@" ;;
 	"" )
 	    echo "What should I do?" ;;
 	* )
-	    cd rpm
+	    cd $pkg_dir
 	    exec git "$@" ;;
     esac
 else
     case $1 in 
 	--* )
 	    exec gp_setup "$@" ;;
-	"" )
-	    echo "No git pkg directory"
-	    gp_setup --usage
-	    ;;
+	"" ) # If there's a packaging branch - typically used post git clone
+	    if git_branch_exists $pkg_branch; then
+		ensure_rpm_subdir $pkg_branch
+	    fi;;
     esac
 fi
