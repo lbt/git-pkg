@@ -15,19 +15,22 @@ log(){
     [[ "x$_V" == "x1" ]] && echo "$@"
 }
 
-# Input: $pkgdir
-# Output: $ver  $rel
-get_info_from_packaging() {
-    _pkgdir=${1:-.}
-    # See if there's a yaml or a .spec
-    _vrfile=$(cd $_pkgdir; find . -maxdepth 1 -name '*yaml' -print -quit)
-    _vrfile=${vrfile:-$(cd $_pkgdir; find . -maxdepth 1 -name '*spec' -print -quit)}
-    if [[ -f $_pkgdir/$_vrfile ]]; then
-	ver=$(grep Version: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
-	rel=$(grep Release: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
-	name=$(grep Name: $_pkgdir/$_vrfile | cut -f2 -d: | tr -d '[:space:]')
-	log "Found Version/Release: $ver-$rel in the packaging"
+get_pkgfile(){
+    # Find the yaml or spec (or abort)
+    pkgfile=$(find $pkg_dir -maxdepth 1 -name '*yaml' -print -quit)
+    if [[ ! $pkgfile ]]; then
+	pkgfile=$(find $pkg_dir -maxdepth 1 -name '*spec' -print -quit)
     fi
+    pkgfile=$(readlink -f $pkgfile)
+}
+
+# Input: field name
+# Needs: $pkgfile
+# Output: field value
+get_field_from_packaging() {
+    [[ -f $pkgfile ]] && {
+	grep "${1}:" $pkgfile | sed -e '/^#/d' -e "s/\s*$1:\s*//i" -e 's/\s*$//g' | head -1
+    }
 }
 
 # Input: 

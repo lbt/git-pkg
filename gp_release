@@ -194,10 +194,15 @@ do_release() {
 	git_tag_cleanly $newver
     fi
 
+    get_pkgfile
+
+    name=$(get_field_from_packaging Name)
+
     # Get ver-rel and increment it if we need to
     case $get_verrel in
 	packaging )
-	    get_info_from_packaging $pkg_dir/
+	    ver=$(get_field_from_packaging Version)
+	    rel=$(get_field_from_packaging Release)
 	    oldrel=$rel
 	    rel=$(perl -e"\$r='$rel';print ++\$r;")
 	    log "Automagically guessed $ver-$oldrel -> $ver-$rel"
@@ -243,12 +248,7 @@ do_release() {
     fi
 
     # Find the yaml or spec (or abort)
-    pkgfile=$(cd $pkg_dir;find . -maxdepth 1 -name '*yaml' -print -quit)
-    pkgname=$(basename $pkgfile .yaml)
-    if [[ ! $pkgfile ]]; then
-	pkgfile=$(cd $pkg_dir;find . -maxdepth 1 -name '*spec' -print -quit)
-	pkgname=$(basename $pkgfile .spec)
-    fi
+    get_pkgfile
     if [[ ! $pkgfile ]]; then
 	fatal "No spec or yaml files found"
     fi
