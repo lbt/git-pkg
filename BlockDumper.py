@@ -7,6 +7,7 @@
 
 import yaml
 import yaml.constructor
+import yaml.resolver
 import collections
 
 class BlockDumper(yaml.Dumper):
@@ -90,3 +91,32 @@ def mystr_presenter(dumper, data):
 
 yaml.add_representer(str, mystr_presenter)
 
+# This works around https://bitbucket.org/xi/pyyaml/issue/12
+def myresolve(self, kind, value, implicit):
+    if self.yaml_path_resolvers:
+        exact_paths = self.resolver_exact_paths[-1]
+        if kind in exact_paths:
+            return exact_paths[kind]
+        if None in exact_paths:
+            return exact_paths[None]
+    if kind is yaml.ScalarNode and implicit[0]:
+        if value == u'':
+            resolvers = self.yaml_implicit_resolvers.get(u'', [])
+        else:
+            resolvers = self.yaml_implicit_resolvers.get(value[0], [])
+        resolvers += self.yaml_implicit_resolvers.get(None, [])
+        for tag, regexp in resolvers:
+            if regexp.match(value):
+                return tag
+        implicit = implicit[1]
+    if kind is yaml.ScalarNode:
+        return self.DEFAULT_SCALAR_TAG
+    elif kind is yaml.SequenceNode:
+        return self.DEFAULT_SEQUENCE_TAG
+    elif kind is yaml.MappingNode:
+        return self.DEFAULT_MAPPING_TAG
+
+yaml.resolver.BaseResolver.resolve = myresolve
+
+yaml.add_path_resolver(u'tag:yaml.org,2002:str', ['Version'], str)
+yaml.add_path_resolver(u'tag:yaml.org,2002:str', ['Release'], str)
