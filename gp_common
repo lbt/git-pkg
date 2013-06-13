@@ -123,7 +123,7 @@ ensure_rpm_subdir() {
     if [[ $branch ]]; then (
 	    cd $pkg_dir
 	    echo 0000000000000000000000000000000000000000 > .git/HEAD
-	    git checkout -f $branch
+	    git checkout -f $branch 2>/dev/null
 	)
     fi
 }

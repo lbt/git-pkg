@@ -3,11 +3,14 @@
 . ${GP_LIB:=/usr/share/gitpkg}/gp_common
 
 if [[ -d $pkg_dir ]]; then
+    if ! [[ -L $pkg_dir/main_git_repo ]]; then
+	fatal "This is not a git-pkg setup. $pkg_dir exists but is not a packaging tracking dir."
+    fi
     case $1 in 
 	--* )
 	    exec gp_release "$@" ;;
 	"" )
-	    echo "What should I do?" ;;
+	    echo "No command given  What should I do?" ;;
 	* )
 	    cd $pkg_dir
 	    exec git "$@" ;;
@@ -19,6 +22,7 @@ else
 	"" ) # If there's a packaging branch - typically used post git clone
 	    if git_branch_exists $pkg_branch; then
 		ensure_rpm_subdir $pkg_branch
+		echo "Set up $pkg_dir as a packaging tracking directory"
 	    fi;;
     esac
 fi
