@@ -190,7 +190,7 @@ do_release() {
     trap cleanup EXIT
     
     # Make a tag if none exists
-    if ! git_tag_exists $newver; then
+    if [[ $newver ]] && ! git_tag_exists $newver; then
 	git_tag_cleanly $newver
     fi
 
