@@ -13,12 +13,12 @@ Name:       gitpkg
 # << macros
 
 Summary:    Helps manage packaging in git
-Version:    0.1.1
+Version:    0.1.2
 Release:    1
 Group:      Development
 License:    GPLv2
 BuildArch:  noarch
-Source0:    gitpkg-0.0.1.tar.bz2
+Source0:    gitpkg-%{version}.tar.gz
 Source100:  gitpkg.yaml
 Requires:   git
 Requires:   pristine-tar

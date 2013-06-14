@@ -1,3 +1,8 @@
+* Fri Jun 14 2013 David Greaves <david@dgreaves.com> - 0.1.2-1
+- Create $DISTRO-master if it doesn't exist
+- Automatically tag --ver if it doesn't exist
+- Fix an issue where Version/Release are interpreted as non-string values
+
 * Sat Jun 08 2013 David Greaves <david@dgreaves.com> - 0.1.1-1
 - Use a sensible name in _src for the tarball
 - The command : git pkg    will now ensure the pkg_dir is setup if appropriate

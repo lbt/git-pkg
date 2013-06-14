@@ -2,12 +2,12 @@ Name: gitpkg
 Summary: Helps manage packaging in git
 Description: Allows the packaging to be maintained in a discrete git tree in the same
   git repo as the source
-Version: 0.1.1
+Version: 0.1.2
 Release: 1
 Group: Development
 License: GPLv2
 Sources:
-  - gitpkg-0.0.1.tar.bz2
+  - gitpkg-%{version}.tar.gz
 PkgBR:
   - python
 Requires:
