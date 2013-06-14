@@ -262,10 +262,12 @@ do_release() {
 	echo ${type}:${tarball}:${basetag} > $pkg_dir/_src
     else
 	echo ${type}:${tarball}:${basetag}:${patchtag} > $pkg_dir/_src
-	# There are patches so we make mer-master branch and point it
-	# here
-	log "Reset $DISTRO-master branch to start at $patchtag"
-	git branch -f $DISTRO-master $patchtag
+	if ! git_branch_exists $DISTRO-master; then
+	    # There are patches so we make mer-master branch and point
+	    # it here
+	    log "Reset $DISTRO-master branch to start at $patchtag"
+	    git branch -f $DISTRO-master $patchtag
+	fi
     fi
 
     # Update the version/release, the .changes and the list of patches
