@@ -60,8 +60,10 @@ def checkout_packaging_branch(pkg, force):
     spec etc so the patch-sets can be added.)
     """
     if force:
-        git('checkout', '-f', pkg)
-
+        try:
+          git('checkout', '-f', pkg)
+        except:
+          fail("Unable to checkout '%s' branch." % (pkg))
     try:
         branch = git('symbolic-ref', 'HEAD').replace('refs/heads/', '').rstrip()
     except subprocess.CalledProcessError:
@@ -313,6 +315,14 @@ parser.add_argument('-V', '--verbose',
                     help="Verbose output.")
 
 args = parser.parse_args()
+
+GIT_DIR=".git"
+if args.git_dir:
+    GIT_DIR="%s/.git" % (args.git_dir)
+
+if not os.path.exists(GIT_DIR):
+    fail("%s directory doesn't exist." %GIT_DIR)
+    sys.exit(1)
 
 if args.git_dir:
     try:
